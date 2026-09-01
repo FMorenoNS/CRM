@@ -5,7 +5,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = process.env.SEED_ADMIN_EMAIL ?? "admin@novaschool.es";
+  const email = process.env.SEED_ADMIN_EMAIL ?? "crmerasmus@novaschool.es";
   const password = process.env.SEED_ADMIN_PASSWORD ?? "CambiaEstaClave123!";
 
   const existing = await prisma.user.findUnique({ where: { email } });
