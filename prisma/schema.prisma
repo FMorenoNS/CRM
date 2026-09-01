@@ -1,0 +1,153 @@
+// Prisma schema — CRM Erasmus+ residencia Novaschool Granada
+// docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  // "native" para desarrollo local; el target debian para la imagen Docker (node:20-slim).
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MARKETING
+  DIRECCION
+}
+
+enum TipoParticipante {
+  ALUMNOS
+  PROFESORES
+}
+
+enum EstadoEstancia {
+  INTERESADO
+  CONTACTADO
+  EN_CONVERSACION
+  PRESUPUESTO_ENVIADO
+  PRESUPUESTO_CONFIRMADO
+  CONTRATO_FIRMADO
+  ALOJADO
+  FINALIZADO
+  PERDIDO
+}
+
+enum TipoInteraccion {
+  CAPTACION_FACEBOOK
+  LLAMADA
+  EMAIL
+  WHATSAPP
+  NOTA
+}
+
+enum TipoDocumento {
+  PRESUPUESTO
+  CONTRATO
+}
+
+model User {
+  id           String   @id @default(cuid())
+  nombre       String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  interacciones      Interaccion[]
+  documentosEnviados DocumentoEnviado[]
+}
+
+model Centro {
+  id          String   @id @default(cuid())
+  nombre      String
+  pais        String
+  ciudad      String?
+  canalOrigen String   @default("Facebook")
+  notas       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  contactos Contacto[]
+  estancias Estancia[]
+
+  @@index([pais])
+  @@index([nombre])
+}
+
+model Contacto {
+  id        String   @id @default(cuid())
+  centroId  String
+  centro    Centro   @relation(fields: [centroId], references: [id], onDelete: Cascade)
+  nombre    String
+  telefono  String?
+  email     String?
+  cargo     String?
+  createdAt DateTime @default(now())
+
+  @@index([centroId])
+}
+
+model Estancia {
+  id                 String           @id @default(cuid())
+  centroId           String
+  centro             Centro           @relation(fields: [centroId], references: [id], onDelete: Cascade)
+  tipoPrograma       String
+  fechaInicio        DateTime?
+  fechaFin           DateTime?
+  edadGrupo          String?
+  tipoParticipante   TipoParticipante
+  centroReceptor     String           @default("Granada")
+  estado             EstadoEstancia   @default(INTERESADO)
+  activo             Boolean          @default(true)
+  presupuestoImporte Decimal?         @db.Decimal(10, 2)
+  notas              String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  interacciones      Interaccion[]
+  documentosEnviados DocumentoEnviado[]
+
+  @@index([centroId])
+  @@index([estado])
+}
+
+model Interaccion {
+  id         String          @id @default(cuid())
+  estanciaId String
+  estancia   Estancia        @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  autorId    String
+  autor      User            @relation(fields: [autorId], references: [id])
+  tipo       TipoInteraccion
+  fecha      DateTime        @default(now())
+  resumen    String
+  createdAt  DateTime        @default(now())
+
+  // Campos específicos de la captación desde Facebook (tipo CAPTACION_FACEBOOK).
+  // El bot (fase 2) los rellenará automáticamente; hoy se rellenan a mano.
+  grupoUrl        String? // URL del grupo de Facebook donde se encontró el mensaje
+  perfilUrl       String? // URL del perfil que publicó el mensaje
+  capturaBase64   String? @db.Text // captura de pantalla del mensaje (data URL)
+  mensajeContacto String? @db.Text // mensaje de primer contacto ya redactado
+
+  @@index([estanciaId, fecha])
+}
+
+model DocumentoEnviado {
+  id           String        @id @default(cuid())
+  estanciaId   String
+  estancia     Estancia      @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  tipo         TipoDocumento
+  enviadoPorId String
+  enviadoPor   User          @relation(fields: [enviadoPorId], references: [id])
+  destinatario String
+  enviadoEn    DateTime      @default(now())
+  exito        Boolean       @default(true)
+  detalle      String?
+
+  @@index([estanciaId])
+}
