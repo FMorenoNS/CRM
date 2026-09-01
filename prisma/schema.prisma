@@ -2,9 +2,11 @@
 // docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider      = "prisma-client-js"
-  // "native" para desarrollo local; el target debian para la imagen Docker (node:20-slim).
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
+  provider = "prisma-client-js"
+  // "native" para desarrollo local; "debian-openssl-3.0.x" para la imagen
+  // Docker (node:20-slim); "rhel-openssl-3.0.x" para las funciones
+  // serverless de Vercel.
+  binaryTargets = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
