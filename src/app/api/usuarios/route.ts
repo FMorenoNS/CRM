@@ -34,6 +34,9 @@ export async function POST(request: Request) {
       email: parsed.data.email,
       passwordHash,
       role: parsed.data.role,
+      centros: parsed.data.centroIds?.length
+        ? { connect: parsed.data.centroIds.map((id) => ({ id })) }
+        : undefined,
     },
   });
 

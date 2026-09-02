@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { registrarHistorial } from "@/lib/audit";
 import { INTERACCION_LABELS } from "@/lib/labels";
+import { canDoOperational, forbidden } from "@/lib/permissions";
 
 export async function DELETE(
   _request: Request,
@@ -12,6 +13,15 @@ export async function DELETE(
   if (auth instanceof NextResponse) return auth;
   const user = auth;
   const { id } = await params;
+
+  const existing = await prisma.interaccion.findUnique({
+    where: { id },
+    include: { estancia: { select: { centroId: true } } },
+  });
+  if (!existing) {
+    return NextResponse.json({ error: "No encontrada." }, { status: 404 });
+  }
+  if (!canDoOperational(user, existing.estancia.centroId)) return forbidden();
 
   const interaccion = await prisma.interaccion.delete({
     where: { id },

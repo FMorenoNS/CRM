@@ -1,6 +1,9 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { EstanciaForm } from "../estancia-form";
+import { getSession } from "@/lib/session";
+import { centroVisibilityFilter } from "@/lib/permissions";
 
 export default async function NuevaEstanciaPage({
   searchParams,
@@ -8,7 +11,12 @@ export default async function NuevaEstanciaPage({
   searchParams: Promise<{ centroId?: string }>;
 }) {
   const { centroId } = await searchParams;
+
+  const session = await getSession();
+  if (!session) redirect("/login");
+
   const centros = await prisma.centro.findMany({
+    where: centroVisibilityFilter(session),
     select: { id: true, nombre: true },
     orderBy: { nombre: "asc" },
   });
@@ -20,7 +28,7 @@ export default async function NuevaEstanciaPage({
         <p className="mt-4 text-sm text-gray-600">
           Primero necesitas crear un{" "}
           <Link href="/centros/nuevo" className="text-brand-navy hover:underline">
-            centro de origen
+            cliente de origen
           </Link>
           .
         </p>

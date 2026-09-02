@@ -48,6 +48,7 @@ export async function POST(request: Request) {
   const centro = await prisma.centro.create({
     data: {
       nombre: d.nombre,
+      tipo: d.tipo || "CENTRO",
       pais: d.pais,
       ciudad: d.ciudad || null,
       canalOrigen: d.canalOrigen || "Facebook",
@@ -63,6 +64,10 @@ export async function POST(request: Request) {
               },
             }
           : undefined,
+      // Dirección solo ve/edita sus clientes asignados: al crear uno nuevo,
+      // se le asigna automáticamente para que conserve acceso a él.
+      usuarios:
+        user.role === "DIRECCION" ? { connect: { id: user.id } } : undefined,
     },
   });
 

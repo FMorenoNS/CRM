@@ -1,12 +1,14 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { CentroEditForm } from "../centro-form";
 import { ContactoForm } from "./contacto-form";
 import { DeleteContactoButton, DeleteCentroButton } from "./delete-buttons";
-import { PARTICIPANTE_LABELS } from "@/lib/labels";
+import { PARTICIPANTE_LABELS, TIPO_CLIENTE_LABELS } from "@/lib/labels";
 import { EstanciaSelector, type EstanciaOption } from "./estancia-selector";
 import { EstanciaPanel } from "./estancia-panel";
+import { getSession } from "@/lib/session";
+import { canAccessCentro, canEditMasterData } from "@/lib/permissions";
 
 function formatFechaHora(d: Date): string {
   return d.toLocaleString("es-ES", {
@@ -49,6 +51,11 @@ export default async function CentroDetailPage({
   const { id } = await params;
   const { estancia: estanciaParam } = await searchParams;
 
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (!canAccessCentro(session, id)) notFound();
+  const puedeEditar = canEditMasterData(session, id);
+
   const [centro, historial] = await Promise.all([
     prisma.centro.findUnique({
       where: { id },
@@ -83,23 +90,28 @@ export default async function CentroDetailPage({
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">
-            {centro.nombre}
+            {centro.nombre}{" "}
+            <span className="align-middle text-xs font-normal text-gray-400">
+              {TIPO_CLIENTE_LABELS[centro.tipo]}
+            </span>
           </h1>
           <p className="text-sm text-gray-500">
             {[centro.ciudad, centro.pais].filter(Boolean).join(", ")}
           </p>
         </div>
-        <DeleteCentroButton centroId={centro.id} />
+        {puedeEditar && <DeleteCentroButton centroId={centro.id} />}
       </div>
 
       <div className="grid gap-10 md:grid-cols-2">
         <section>
-          <h2 className="text-lg font-medium text-gray-900">Datos del centro</h2>
+          <h2 className="text-lg font-medium text-gray-900">Datos del cliente</h2>
           <div className="mt-4">
             <CentroEditForm
               centroId={centro.id}
+              readOnly={!puedeEditar}
               defaultValues={{
                 nombre: centro.nombre,
+                tipo: centro.tipo,
                 pais: centro.pais,
                 ciudad: centro.ciudad,
                 canalOrigen: centro.canalOrigen,
@@ -125,16 +137,18 @@ export default async function CentroDetailPage({
                       .join(" · ")}
                   </p>
                 </div>
-                <DeleteContactoButton contactoId={contacto.id} />
+                {puedeEditar && <DeleteContactoButton contactoId={contacto.id} />}
               </li>
             ))}
             {centro.contactos.length === 0 && (
               <p className="text-sm text-gray-500">Sin contactos todavía.</p>
             )}
           </ul>
-          <div className="mt-4">
-            <ContactoForm centroId={centro.id} />
-          </div>
+          {puedeEditar && (
+            <div className="mt-4">
+              <ContactoForm centroId={centro.id} />
+            </div>
+          )}
         </section>
       </div>
 
@@ -158,10 +172,10 @@ export default async function CentroDetailPage({
 
         <div className="mt-4">
           {selectedId ? (
-            <EstanciaPanel estanciaId={selectedId} />
+            <EstanciaPanel estanciaId={selectedId} puedeEditar={puedeEditar} />
           ) : (
             <p className="text-sm text-gray-500">
-              Este centro no tiene estancias todavía. Crea la primera con
+              Este cliente no tiene estancias todavía. Crea la primera con
               “Nueva estancia”.
             </p>
           )}

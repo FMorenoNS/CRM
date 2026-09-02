@@ -4,6 +4,7 @@ import { requireApiUser } from "@/lib/api-auth";
 import { interaccionSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
 import { INTERACCION_LABELS } from "@/lib/labels";
+import { canDoOperational, forbidden } from "@/lib/permissions";
 
 export async function POST(
   request: Request,
@@ -13,6 +14,15 @@ export async function POST(
   if (auth instanceof NextResponse) return auth;
   const user = auth;
   const { id: estanciaId } = await params;
+
+  const estancia = await prisma.estancia.findUnique({
+    where: { id: estanciaId },
+    select: { centroId: true },
+  });
+  if (!estancia) {
+    return NextResponse.json({ error: "No encontrada." }, { status: 404 });
+  }
+  if (!canDoOperational(user, estancia.centroId)) return forbidden();
 
   const body = await request.json().catch(() => null);
   const parsed = interaccionSchema.safeParse(body);
@@ -33,18 +43,12 @@ export async function POST(
     },
   });
 
-  const estancia = await prisma.estancia.findUnique({
-    where: { id: estanciaId },
-    select: { centroId: true },
+  await registrarHistorial({
+    centroId: estancia.centroId,
+    actorId: user.id,
+    accion: `Interacción registrada: ${INTERACCION_LABELS[parsed.data.tipo] ?? parsed.data.tipo}`,
+    detalle: parsed.data.resumen,
   });
-  if (estancia) {
-    await registrarHistorial({
-      centroId: estancia.centroId,
-      actorId: user.id,
-      accion: `Interacción registrada: ${INTERACCION_LABELS[parsed.data.tipo] ?? parsed.data.tipo}`,
-      detalle: parsed.data.resumen,
-    });
-  }
 
   return NextResponse.json({ id: interaccion.id });
 }

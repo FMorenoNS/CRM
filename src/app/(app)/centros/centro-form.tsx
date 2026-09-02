@@ -7,6 +7,7 @@ import { CANAL_OPTIONS, PAIS_OPTIONS, PROGRAMA_OPTIONS } from "@/lib/labels";
 
 type DefaultValues = {
   nombre?: string;
+  tipo?: string;
   pais?: string;
   ciudad?: string | null;
   canalOrigen?: string | null;
@@ -22,19 +23,51 @@ type Duplicado = {
 
 const inputCls = "rounded border border-gray-300 px-3 py-2 text-sm";
 
-function CentroFields({ defaultValues }: { defaultValues?: DefaultValues }) {
+function CentroFields({
+  defaultValues,
+  disabled,
+}: {
+  defaultValues?: DefaultValues;
+  disabled?: boolean;
+}) {
   return (
     <>
       <div className="flex flex-col gap-1">
         <label htmlFor="nombre" className="text-sm font-medium text-gray-700">
-          Nombre del centro
+          Nombre del cliente
         </label>
         <input
           id="nombre"
           name="nombre"
+          disabled={disabled}
           defaultValue={defaultValues?.nombre}
           className={inputCls}
         />
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-medium text-gray-700">Tipo de cliente</span>
+        <div className="flex gap-4 text-sm text-gray-700">
+          <label className="flex items-center gap-1.5">
+            <input
+              type="radio"
+              name="tipo"
+              value="CENTRO"
+              disabled={disabled}
+              defaultChecked={(defaultValues?.tipo ?? "CENTRO") === "CENTRO"}
+            />
+            Centro (institución)
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input
+              type="radio"
+              name="tipo"
+              value="PERSONA"
+              disabled={disabled}
+              defaultChecked={defaultValues?.tipo === "PERSONA"}
+            />
+            Persona
+          </label>
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1">
@@ -44,6 +77,7 @@ function CentroFields({ defaultValues }: { defaultValues?: DefaultValues }) {
           <select
             id="pais"
             name="pais"
+            disabled={disabled}
             defaultValue={defaultValues?.pais ?? ""}
             className={inputCls}
           >
@@ -62,6 +96,7 @@ function CentroFields({ defaultValues }: { defaultValues?: DefaultValues }) {
           <input
             id="ciudad"
             name="ciudad"
+            disabled={disabled}
             defaultValue={defaultValues?.ciudad ?? ""}
             className={inputCls}
           />
@@ -74,6 +109,7 @@ function CentroFields({ defaultValues }: { defaultValues?: DefaultValues }) {
         <select
           id="canalOrigen"
           name="canalOrigen"
+          disabled={disabled}
           defaultValue={defaultValues?.canalOrigen ?? "Facebook"}
           className={inputCls}
         >
@@ -91,6 +127,7 @@ function CentroFields({ defaultValues }: { defaultValues?: DefaultValues }) {
         <textarea
           id="notas"
           name="notas"
+          disabled={disabled}
           rows={3}
           defaultValue={defaultValues?.notas ?? ""}
           className={inputCls}
@@ -110,6 +147,7 @@ export function CentroCreateForm() {
     const d = new FormData(form);
     return {
       nombre: (d.get("nombre") as string) ?? "",
+      tipo: (d.get("tipo") as string) || "CENTRO",
       pais: (d.get("pais") as string) ?? "",
       ciudad: (d.get("ciudad") as string) ?? "",
       canalOrigen: (d.get("canalOrigen") as string) || "Facebook",
@@ -145,7 +183,7 @@ export function CentroCreateForm() {
         return;
       }
       if (!res.ok) {
-        setError(data.error ?? "No se pudo crear el centro.");
+        setError(data.error ?? "No se pudo crear el cliente.");
         return;
       }
       router.push(`/centros/${data.id}`);
@@ -248,7 +286,7 @@ export function CentroCreateForm() {
       {duplicados && duplicados.length > 0 && (
         <div className="rounded border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
           <p className="font-medium">
-            Puede que este centro ya exista. Coincidencias:
+            Puede que este cliente ya exista. Coincidencias:
           </p>
           <ul className="mt-2 flex flex-col gap-1">
             {duplicados.map((d) => (
@@ -275,7 +313,7 @@ export function CentroCreateForm() {
               Crear uno nuevo de todas formas
             </button>
             <span className="self-center text-xs text-amber-700">
-              …o pulsa un centro de la lista para ir al existente.
+              …o pulsa un cliente de la lista para ir al existente.
             </span>
           </div>
         </div>
@@ -292,7 +330,7 @@ export function CentroCreateForm() {
         disabled={isPending}
         className="self-start rounded bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-navy-dark disabled:opacity-50"
       >
-        {isPending ? "Guardando..." : "Crear centro"}
+        {isPending ? "Guardando..." : "Crear cliente"}
       </button>
     </form>
   );
@@ -301,9 +339,11 @@ export function CentroCreateForm() {
 export function CentroEditForm({
   centroId,
   defaultValues,
+  readOnly,
 }: {
   centroId: string;
   defaultValues: DefaultValues;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string>();
@@ -318,6 +358,7 @@ export function CentroEditForm({
     const d = new FormData(event.currentTarget);
     const values = {
       nombre: (d.get("nombre") as string) ?? "",
+      tipo: (d.get("tipo") as string) || "CENTRO",
       pais: (d.get("pais") as string) ?? "",
       ciudad: (d.get("ciudad") as string) ?? "",
       canalOrigen: (d.get("canalOrigen") as string) || "Facebook",
@@ -331,7 +372,7 @@ export function CentroEditForm({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "No se pudo guardar el centro.");
+        setError(data.error ?? "No se pudo guardar el cliente.");
         return;
       }
       setSaved(true);
@@ -341,6 +382,17 @@ export function CentroEditForm({
     } finally {
       setIsPending(false);
     }
+  }
+
+  if (readOnly) {
+    return (
+      <div className="flex max-w-md flex-col gap-4 opacity-90">
+        <CentroFields defaultValues={defaultValues} disabled />
+        <p className="text-xs text-gray-500">
+          No tienes permiso para editar los datos de este cliente.
+        </p>
+      </div>
+    );
   }
 
   return (

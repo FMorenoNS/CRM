@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { centroSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
+import { canEditMasterData, forbidden } from "@/lib/permissions";
 
 export async function PATCH(
   request: Request,
@@ -12,6 +13,8 @@ export async function PATCH(
   if (auth instanceof NextResponse) return auth;
   const user = auth;
   const { id } = await params;
+
+  if (!canEditMasterData(user, id)) return forbidden();
 
   const body = await request.json().catch(() => null);
   const parsed = centroSchema.safeParse(body);
@@ -26,6 +29,7 @@ export async function PATCH(
     where: { id },
     data: {
       nombre: parsed.data.nombre,
+      tipo: parsed.data.tipo || "CENTRO",
       pais: parsed.data.pais,
       ciudad: parsed.data.ciudad || null,
       canalOrigen: parsed.data.canalOrigen || "Facebook",
@@ -48,7 +52,10 @@ export async function DELETE(
 ) {
   const auth = await requireApiUser();
   if (auth instanceof NextResponse) return auth;
+  const user = auth;
   const { id } = await params;
+
+  if (!canEditMasterData(user, id)) return forbidden();
 
   await prisma.centro.delete({ where: { id } });
   return NextResponse.json({ ok: true });

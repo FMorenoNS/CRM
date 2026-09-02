@@ -37,7 +37,7 @@ export function DeleteCentroButton({ centroId }: { centroId: string }) {
   async function handleClick() {
     if (
       !confirm(
-        "¿Eliminar este centro? Se borrarán también sus contactos y estancias."
+        "¿Eliminar este cliente? Se borrarán también sus contactos y estancias."
       )
     )
       return;
@@ -60,7 +60,7 @@ export function DeleteCentroButton({ centroId }: { centroId: string }) {
       disabled={isPending}
       className="text-sm text-red-600 hover:underline disabled:opacity-50"
     >
-      Eliminar centro
+      Eliminar cliente
     </button>
   );
 }

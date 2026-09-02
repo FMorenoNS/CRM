@@ -8,6 +8,9 @@ export type SessionUser = {
   nombre: string;
   email: string;
   role: "ADMIN" | "MARKETING" | "DIRECCION";
+  // Clientes asignados a este usuario. Solo restringe de verdad el acceso
+  // cuando role === "DIRECCION"; ADMIN y MARKETING ven todos los clientes.
+  centroIds: string[];
 };
 
 const COOKIE_NAME = "session";
@@ -51,7 +54,10 @@ export async function getSession(): Promise<SessionUser | null> {
   const decoded = await decryptSession(token);
   if (!decoded) return null;
 
-  const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+  const user = await prisma.user.findUnique({
+    where: { id: decoded.id },
+    include: { centros: { select: { id: true } } },
+  });
   if (!user || !user.activo) return null;
 
   return {
@@ -59,6 +65,7 @@ export async function getSession(): Promise<SessionUser | null> {
     nombre: user.nombre,
     email: user.email,
     role: user.role,
+    centroIds: user.centros.map((c) => c.id),
   };
 }
 

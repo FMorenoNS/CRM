@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { isEmailConfigured, sendDocumentEmail } from "@/lib/email";
 import { registrarHistorial } from "@/lib/audit";
+import { canDoOperational, forbidden } from "@/lib/permissions";
 
 const schema = z.object({
   tipo: z.enum(["PRESUPUESTO", "CONTRATO"]),
@@ -45,6 +46,10 @@ export async function POST(
     where: { id: estanciaId },
     select: { centroId: true },
   });
+  if (!estancia) {
+    return NextResponse.json({ error: "No encontrada." }, { status: 404 });
+  }
+  if (!canDoOperational(user, estancia.centroId)) return forbidden();
 
   try {
     await sendDocumentEmail({

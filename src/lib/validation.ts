@@ -7,6 +7,7 @@ export const loginSchema = z.object({
 
 export const centroSchema = z.object({
   nombre: z.string().trim().optional().default(""),
+  tipo: z.enum(["CENTRO", "PERSONA"]).optional().default("CENTRO"),
   pais: z.string().trim().optional().default(""),
   ciudad: z.string().trim().optional().nullable().or(z.literal("")),
   canalOrigen: z.string().trim().min(1).default("Facebook"),
@@ -132,6 +133,7 @@ export const userSchema = z.object({
   email: z.string().trim().email("Email inválido."),
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
   role: z.enum(["ADMIN", "MARKETING", "DIRECCION"]),
+  centroIds: z.array(z.string()).optional(),
 });
 
 export const ESTADO_VALUES = ESTADOS;

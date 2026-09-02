@@ -50,6 +50,13 @@ enum TipoDocumento {
   CONTRATO
 }
 
+// Un cliente puede ser una institución (colegio/centro) o una persona a
+// título individual.
+enum TipoCliente {
+  CENTRO
+  PERSONA
+}
+
 model User {
   id           String   @id @default(cuid())
   nombre       String
@@ -63,21 +70,27 @@ model User {
   interacciones      Interaccion[]
   documentosEnviados DocumentoEnviado[]
   registrosHistorial AuditLog[]
+  // Clientes a los que este usuario tiene acceso. Solo se aplica como
+  // restricción real al rol DIRECCION (ADMIN y MARKETING ven todos los
+  // clientes independientemente de esta lista).
+  centros            Centro[] @relation("UsuarioCentros")
 }
 
 model Centro {
-  id          String   @id @default(cuid())
+  id          String      @id @default(cuid())
   nombre      String
+  tipo        TipoCliente @default(CENTRO)
   pais        String
   ciudad      String?
-  canalOrigen String   @default("Facebook")
+  canalOrigen String      @default("Facebook")
   notas       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
   contactos Contacto[]
   estancias Estancia[]
   historial AuditLog[]
+  usuarios  User[] @relation("UsuarioCentros")
 
   @@index([pais])
   @@index([nombre])

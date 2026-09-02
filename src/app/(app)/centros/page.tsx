@@ -1,9 +1,12 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { CentroQuickAddRow } from "./centro-quick-add-row";
-import { CANAL_OPTIONS, PAIS_OPTIONS } from "@/lib/labels";
+import { CANAL_OPTIONS, PAIS_OPTIONS, TIPO_CLIENTE_LABELS } from "@/lib/labels";
+import { getSession } from "@/lib/session";
+import { centroVisibilityFilter } from "@/lib/permissions";
 
-const COLUMN_COUNT = 8;
+const COLUMN_COUNT = 9;
 
 function formatFecha(d: Date) {
   return d.toLocaleDateString("es-ES", {
@@ -20,8 +23,13 @@ export default async function CentrosPage({
 }) {
   const { pais, nombre, canal } = await searchParams;
 
+  const session = await getSession();
+  if (!session) redirect("/login");
+  const visibilidad = centroVisibilityFilter(session);
+
   const centros = await prisma.centro.findMany({
     where: {
+      ...(visibilidad ?? {}),
       pais: pais || undefined,
       canalOrigen: canal || undefined,
       nombre: nombre ? { contains: nombre, mode: "insensitive" } : undefined,
@@ -45,12 +53,12 @@ export default async function CentrosPage({
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Centros</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Clientes</h1>
         <Link
           href="/centros/nuevo"
           className="rounded bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-navy-dark"
         >
-          Nuevo centro
+          Nuevo cliente
         </Link>
       </div>
 
@@ -109,7 +117,8 @@ export default async function CentrosPage({
         <table className="w-full min-w-[1000px] text-sm">
           <thead className="bg-gray-50 text-center text-gray-500">
             <tr>
-              <th className="px-4 py-2">Centro</th>
+              <th className="px-4 py-2">Cliente</th>
+              <th className="px-4 py-2">Tipo</th>
               <th className="px-4 py-2">País</th>
               <th className="px-4 py-2">Fecha alta</th>
               <th className="px-4 py-2">Persona de contacto</th>
@@ -139,6 +148,7 @@ export default async function CentrosPage({
                       </span>
                     )}
                   </td>
+                  <td className="px-4 py-2">{TIPO_CLIENTE_LABELS[centro.tipo]}</td>
                   <td className="px-4 py-2">{centro.pais}</td>
                   <td className="px-4 py-2 whitespace-nowrap">
                     {formatFecha(centro.createdAt)}
@@ -168,7 +178,7 @@ export default async function CentrosPage({
                   colSpan={COLUMN_COUNT}
                   className="px-4 py-6 text-center text-gray-500"
                 >
-                  No hay centros registrados todavía.
+                  No hay clientes registrados todavía.
                 </td>
               </tr>
             )}

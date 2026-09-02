@@ -1,7 +1,10 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Kanban, type EstanciaCard } from "./kanban";
 import { PAIS_OPTIONS, PROGRAMA_OPTIONS, TODOS_ESTADOS, ESTADO_LABELS } from "@/lib/labels";
+import { getSession } from "@/lib/session";
+import { canDoOperational, centroVisibilityFilter } from "@/lib/permissions";
 
 export default async function EstanciasPage({
   searchParams,
@@ -15,9 +18,13 @@ export default async function EstanciasPage({
 }) {
   const { pais, participante, tipoPrograma, estado } = await searchParams;
 
+  const session = await getSession();
+  if (!session) redirect("/login");
+  const visibilidad = centroVisibilityFilter(session);
+
   const estancias = await prisma.estancia.findMany({
     where: {
-      centro: pais ? { pais } : undefined,
+      centro: { pais: pais || undefined, ...(visibilidad ?? {}) },
       tipoParticipante:
         participante === "ALUMNOS" || participante === "PROFESORES"
           ? participante
@@ -41,6 +48,7 @@ export default async function EstanciasPage({
     edadGrupo: e.edadGrupo,
     estado: e.estado,
     activo: e.activo,
+    puedeEditar: canDoOperational(session, e.centro.id),
   }));
 
   return (

@@ -137,3 +137,14 @@ export const DOCUMENTO_LABELS: Record<string, string> = {
   PRESUPUESTO: "Presupuesto",
   CONTRATO: "Contrato",
 };
+
+export const TIPO_CLIENTE_LABELS: Record<string, string> = {
+  CENTRO: "Centro",
+  PERSONA: "Persona",
+};
+
+export const ROLE_LABELS: Record<string, string> = {
+  ADMIN: "Administrador",
+  MARKETING: "Marketing",
+  DIRECCION: "Dirección",
+};

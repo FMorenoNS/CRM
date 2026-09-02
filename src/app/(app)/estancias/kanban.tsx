@@ -15,6 +15,7 @@ export type EstanciaCard = {
   edadGrupo: string | null;
   estado: string;
   activo: boolean;
+  puedeEditar: boolean;
 };
 
 const COLUMNS = [...PIPELINE_ESTADOS, "PERDIDO"] as const;
@@ -31,9 +32,11 @@ function Card({
   const activa = estancia.activo;
   return (
     <div
-      draggable
-      onDragStart={() => onDragStart(estancia.id)}
-      className={`cursor-grab rounded border p-3 text-sm shadow-sm active:cursor-grabbing ${
+      draggable={estancia.puedeEditar}
+      onDragStart={() => estancia.puedeEditar && onDragStart(estancia.id)}
+      className={`rounded border p-3 text-sm shadow-sm ${
+        estancia.puedeEditar ? "cursor-grab active:cursor-grabbing" : ""
+      } ${
         activa
           ? "border-gray-200 bg-white"
           : "border-gray-200 bg-gray-100 opacity-70"
@@ -54,13 +57,15 @@ function Card({
         {estancia.edadGrupo ? ` · ${estancia.edadGrupo}` : ""}
       </p>
       <p className="text-xs text-gray-500">{estancia.tipoPrograma}</p>
-      <button
-        type="button"
-        onClick={() => onToggleActivo(estancia.id)}
-        className="mt-2 text-xs text-gray-500 hover:text-gray-800 hover:underline"
-      >
-        {activa ? "Marcar inactiva" : "Marcar activa"}
-      </button>
+      {estancia.puedeEditar && (
+        <button
+          type="button"
+          onClick={() => onToggleActivo(estancia.id)}
+          className="mt-2 text-xs text-gray-500 hover:text-gray-800 hover:underline"
+        >
+          {activa ? "Marcar inactiva" : "Marcar activa"}
+        </button>
+      )}
     </div>
   );
 }

@@ -51,7 +51,7 @@ export function CentroQuickAddRow({ colSpan }: { colSpan: number }) {
         return;
       }
       if (!res.ok) {
-        setError(data.error ?? "No se pudo crear el centro.");
+        setError(data.error ?? "No se pudo crear el cliente.");
         return;
       }
       formRef.current?.reset();
@@ -87,7 +87,7 @@ export function CentroQuickAddRow({ colSpan }: { colSpan: number }) {
           >
             <input
               name="nombre"
-              placeholder="Nombre del centro"
+              placeholder="Nombre del cliente"
               className={cellInputCls}
             />
             <select name="pais" defaultValue="" className={cellInputCls}>
@@ -154,7 +154,7 @@ export function CentroQuickAddRow({ colSpan }: { colSpan: number }) {
           <td colSpan={colSpan} className="px-4 py-3">
             <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
               <p className="font-medium">
-                Puede que este centro ya exista. Coincidencias:
+                Puede que este cliente ya exista. Coincidencias:
               </p>
               <ul className="mt-2 flex flex-col gap-1">
                 {duplicados.map((d) => (
@@ -181,7 +181,7 @@ export function CentroQuickAddRow({ colSpan }: { colSpan: number }) {
                   Crear uno nuevo de todas formas
                 </button>
                 <span className="text-xs text-amber-700">
-                  …o pulsa un centro de la lista para ir al existente.
+                  …o pulsa un cliente de la lista para ir al existente.
                 </span>
               </div>
             </div>

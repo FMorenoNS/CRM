@@ -16,7 +16,10 @@ export async function POST(request: Request) {
   }
 
   const { email, password } = parsed.data;
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({
+    where: { email },
+    include: { centros: { select: { id: true } } },
+  });
 
   if (!user || !user.activo) {
     return NextResponse.json(
@@ -38,6 +41,7 @@ export async function POST(request: Request) {
     nombre: user.nombre,
     email: user.email,
     role: user.role,
+    centroIds: user.centros.map((c) => c.id),
   });
 
   return NextResponse.json({ ok: true });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, type ChangeEvent, type FormEvent } from "react";
 
 export type UsuarioRow = {
   id: string;
@@ -9,7 +9,10 @@ export type UsuarioRow = {
   email: string;
   role: string;
   activo: boolean;
+  centroIds: string[];
 };
+
+export type ClienteOption = { id: string; nombre: string };
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Administrador",
@@ -19,7 +22,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 const inputCls = "rounded border border-gray-300 px-3 py-2 text-sm";
 
-function CreateForm() {
+function CreateForm({ clientes }: { clientes: ClienteOption[] }) {
   const router = useRouter();
   const [error, setError] = useState<string>();
   const [ok, setOk] = useState(false);
@@ -37,6 +40,7 @@ function CreateForm() {
       email: (data.get("email") as string) ?? "",
       password: (data.get("password") as string) ?? "",
       role: (data.get("role") as string) ?? "MARKETING",
+      centroIds: data.getAll("centroIds") as string[],
     };
     try {
       const res = await fetch("/api/usuarios", {
@@ -88,6 +92,24 @@ function CreateForm() {
           <option value="ADMIN">Administrador</option>
         </select>
       </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="centroIds" className="text-sm font-medium text-gray-700">
+          Clientes a los que tiene acceso (solo aplica al rol Dirección)
+        </label>
+        <select
+          id="centroIds"
+          name="centroIds"
+          multiple
+          size={Math.min(5, Math.max(3, clientes.length))}
+          className={inputCls}
+        >
+          {clientes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nombre}
+            </option>
+          ))}
+        </select>
+      </div>
       {error && (
         <p className="text-sm text-red-600" role="alert">
           {error}
@@ -105,9 +127,16 @@ function CreateForm() {
   );
 }
 
-function RowActions({ user }: { user: UsuarioRow }) {
+function RowActions({
+  user,
+  clientes,
+}: {
+  user: UsuarioRow;
+  clientes: ClienteOption[];
+}) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
+  const [centroIds, setCentroIds] = useState<string[]>(user.centroIds);
 
   async function patch(payload: Record<string, unknown>) {
     setIsPending(true);
@@ -123,6 +152,17 @@ function RowActions({ user }: { user: UsuarioRow }) {
     }
   }
 
+  function handleCentrosChange(event: ChangeEvent<HTMLSelectElement>) {
+    const selected = Array.from(event.target.selectedOptions).map(
+      (o) => o.value
+    );
+    setCentroIds(selected);
+  }
+
+  const centrosCambiados =
+    centroIds.length !== user.centroIds.length ||
+    centroIds.some((id) => !user.centroIds.includes(id));
+
   async function resetPassword() {
     const nueva = prompt(
       `Nueva contraseña para ${user.nombre} (mín. 8 caracteres):`
@@ -137,28 +177,62 @@ function RowActions({ user }: { user: UsuarioRow }) {
   }
 
   return (
-    <div className="flex gap-3">
-      <button
-        type="button"
-        onClick={resetPassword}
-        disabled={isPending}
-        className="text-brand-navy hover:underline disabled:opacity-50"
-      >
-        Cambiar contraseña
-      </button>
-      <button
-        type="button"
-        onClick={() => patch({ activo: !user.activo })}
-        disabled={isPending}
-        className="text-gray-600 hover:underline disabled:opacity-50"
-      >
-        {user.activo ? "Desactivar" : "Activar"}
-      </button>
+    <div className="flex flex-col gap-2">
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={resetPassword}
+          disabled={isPending}
+          className="text-brand-navy hover:underline disabled:opacity-50"
+        >
+          Cambiar contraseña
+        </button>
+        <button
+          type="button"
+          onClick={() => patch({ activo: !user.activo })}
+          disabled={isPending}
+          className="text-gray-600 hover:underline disabled:opacity-50"
+        >
+          {user.activo ? "Desactivar" : "Activar"}
+        </button>
+      </div>
+      <div className="flex items-center gap-2">
+        <select
+          multiple
+          size={Math.min(4, Math.max(2, clientes.length))}
+          value={centroIds}
+          onChange={handleCentrosChange}
+          className="rounded border border-gray-300 px-2 py-1 text-xs"
+        >
+          {clientes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nombre}
+            </option>
+          ))}
+        </select>
+        {centrosCambiados && (
+          <button
+            type="button"
+            onClick={() => patch({ centroIds })}
+            disabled={isPending}
+            className="self-start text-xs text-brand-navy hover:underline disabled:opacity-50"
+          >
+            Guardar clientes
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
-export function UsuariosClient({ usuarios }: { usuarios: UsuarioRow[] }) {
+export function UsuariosClient({
+  usuarios,
+  clientes,
+}: {
+  usuarios: UsuarioRow[];
+  clientes: ClienteOption[];
+}) {
+  const nombresPorId = new Map(clientes.map((c) => [c.id, c.nombre]));
   return (
     <div className="flex flex-col gap-6">
       <div className="overflow-hidden rounded border border-gray-200 bg-white">
@@ -169,6 +243,7 @@ export function UsuariosClient({ usuarios }: { usuarios: UsuarioRow[] }) {
               <th className="px-4 py-2">Email</th>
               <th className="px-4 py-2">Rol</th>
               <th className="px-4 py-2">Estado</th>
+              <th className="px-4 py-2">Clientes</th>
               <th className="px-4 py-2">Acciones</th>
             </tr>
           </thead>
@@ -185,15 +260,24 @@ export function UsuariosClient({ usuarios }: { usuarios: UsuarioRow[] }) {
                     <span className="text-gray-400">Inactivo</span>
                   )}
                 </td>
+                <td className="px-4 py-2 text-xs text-gray-600">
+                  {u.role === "ADMIN" || u.role === "MARKETING"
+                    ? "Todos"
+                    : u.centroIds.length > 0
+                      ? u.centroIds
+                          .map((id) => nombresPorId.get(id) ?? id)
+                          .join(", ")
+                      : "Ninguno"}
+                </td>
                 <td className="px-4 py-2">
-                  <RowActions user={u} />
+                  <RowActions user={u} clientes={clientes} />
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <CreateForm />
+      <CreateForm clientes={clientes} />
     </div>
   );
 }

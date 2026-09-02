@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { contactoSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
+import { canEditMasterData, forbidden } from "@/lib/permissions";
 
 export async function POST(
   request: Request,
@@ -12,6 +13,8 @@ export async function POST(
   if (auth instanceof NextResponse) return auth;
   const user = auth;
   const { id: centroId } = await params;
+
+  if (!canEditMasterData(user, centroId)) return forbidden();
 
   const body = await request.json().catch(() => null);
   const parsed = contactoSchema.safeParse(body);

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { updateEstanciaSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
+import { canEditMasterData, forbidden } from "@/lib/permissions";
 
 export async function PATCH(
   request: Request,
@@ -12,6 +13,15 @@ export async function PATCH(
   if (auth instanceof NextResponse) return auth;
   const user = auth;
   const { id } = await params;
+
+  const existing = await prisma.estancia.findUnique({
+    where: { id },
+    select: { centroId: true },
+  });
+  if (!existing) {
+    return NextResponse.json({ error: "No encontrada." }, { status: 404 });
+  }
+  if (!canEditMasterData(user, existing.centroId)) return forbidden();
 
   const body = await request.json().catch(() => null);
   const parsed = updateEstanciaSchema.safeParse(body);
@@ -61,6 +71,15 @@ export async function DELETE(
   if (auth instanceof NextResponse) return auth;
   const user = auth;
   const { id } = await params;
+
+  const existing = await prisma.estancia.findUnique({
+    where: { id },
+    select: { centroId: true },
+  });
+  if (!existing) {
+    return NextResponse.json({ error: "No encontrada." }, { status: 404 });
+  }
+  if (!canEditMasterData(user, existing.centroId)) return forbidden();
 
   const estancia = await prisma.estancia.delete({ where: { id } });
 

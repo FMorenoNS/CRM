@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { captacionSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
+import { canDoOperational, forbidden } from "@/lib/permissions";
 
 // Crea o actualiza la interacción de captación de Facebook (una por estancia).
 export async function PUT(
@@ -13,6 +14,15 @@ export async function PUT(
   if (auth instanceof NextResponse) return auth;
   const user = auth;
   const { id: estanciaId } = await params;
+
+  const estanciaExistente = await prisma.estancia.findUnique({
+    where: { id: estanciaId },
+    select: { centroId: true },
+  });
+  if (!estanciaExistente) {
+    return NextResponse.json({ error: "No encontrada." }, { status: 404 });
+  }
+  if (!canDoOperational(user, estanciaExistente.centroId)) return forbidden();
 
   const body = await request.json().catch(() => null);
   const parsed = captacionSchema.safeParse(body);
@@ -48,17 +58,11 @@ export async function PUT(
     });
   }
 
-  const estancia = await prisma.estancia.findUnique({
-    where: { id: estanciaId },
-    select: { centroId: true },
+  await registrarHistorial({
+    centroId: estanciaExistente.centroId,
+    actorId: user.id,
+    accion: "Captación de Facebook actualizada",
   });
-  if (estancia) {
-    await registrarHistorial({
-      centroId: estancia.centroId,
-      actorId: user.id,
-      accion: "Captación de Facebook actualizada",
-    });
-  }
 
   return NextResponse.json({ ok: true });
 }

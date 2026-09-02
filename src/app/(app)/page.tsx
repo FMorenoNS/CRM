@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import {
   ESTADO_LABELS,
@@ -6,6 +7,8 @@ import {
   DOCUMENTO_LABELS,
 } from "@/lib/labels";
 import { TaskCard } from "./task-card";
+import { getSession } from "@/lib/session";
+import { centroVisibilityFilter } from "@/lib/permissions";
 
 const DIAS_SEGUIMIENTO = 3; // a partir de aquí, "hay que hacer algo"
 const DIAS_ABANDONO = 15; // a partir de aquí, "esto probablemente está muerto"
@@ -112,6 +115,10 @@ function TaskGroup({
 }
 
 export default async function DashboardPage() {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  const visibilidad = centroVisibilityFilter(session);
+
   const ahora = Date.now();
   const enTresSemanas = new Date(ahora + DIAS_PROXIMA * 86_400_000);
   const contactosSelect = {
@@ -127,8 +134,9 @@ export default async function DashboardPage() {
     proximasRaw,
     documentosFallidosRaw,
   ] = await Promise.all([
-    prisma.centro.count(),
+    prisma.centro.count({ where: visibilidad }),
     prisma.estancia.findMany({
+      where: { centro: visibilidad },
       include: {
         centro: { select: { nombre: true, pais: true } },
         interacciones: { orderBy: { fecha: "desc" }, take: 1 },
@@ -136,7 +144,7 @@ export default async function DashboardPage() {
     }),
     // Interesados a los que aún no hemos llamado.
     prisma.estancia.findMany({
-      where: { activo: true, estado: "INTERESADO" },
+      where: { activo: true, estado: "INTERESADO", centro: visibilidad },
       include: {
         centro: {
           select: { id: true, nombre: true, contactos: contactosSelect },
@@ -146,7 +154,11 @@ export default async function DashboardPage() {
     }),
     // En gestión: para detectar silencios (sin respuesta / abandono).
     prisma.estancia.findMany({
-      where: { activo: true, estado: { in: [...ESTADOS_EN_CURSO] } },
+      where: {
+        activo: true,
+        estado: { in: [...ESTADOS_EN_CURSO] },
+        centro: visibilidad,
+      },
       include: {
         centro: {
           select: { id: true, nombre: true, contactos: contactosSelect },
@@ -164,6 +176,7 @@ export default async function DashboardPage() {
         activo: true,
         estado: { in: [...ESTADOS_SIN_CERRAR] },
         fechaInicio: { not: null, lte: enTresSemanas },
+        centro: visibilidad,
       },
       include: {
         centro: {
@@ -174,7 +187,7 @@ export default async function DashboardPage() {
     }),
     // Envíos de presupuesto/contrato que fallaron.
     prisma.documentoEnviado.findMany({
-      where: { exito: false },
+      where: { exito: false, estancia: { centro: visibilidad } },
       include: {
         estancia: { include: { centro: { select: { id: true, nombre: true } } } },
       },
@@ -352,7 +365,7 @@ export default async function DashboardPage() {
             href="/centros/nuevo"
             className="rounded bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-navy-dark"
           >
-            Nuevo centro
+            Nuevo cliente
           </Link>
           <Link
             href="/estancias/nueva"
@@ -432,7 +445,7 @@ export default async function DashboardPage() {
       )}
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <StatCard label="Centros captados" value={centrosCount} />
+        <StatCard label="Clientes captados" value={centrosCount} />
         <StatCard label="Estancias totales" value={total} />
         <StatCard label="Tasa de conversión" value={`${conversion}%`} />
         <StatCard label="Tareas pendientes" value={totalAlertas} />

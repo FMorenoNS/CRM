@@ -20,7 +20,13 @@ function toDateInput(d: Date | null): string {
   return d ? d.toISOString().slice(0, 10) : "";
 }
 
-export async function EstanciaPanel({ estanciaId }: { estanciaId: string }) {
+export async function EstanciaPanel({
+  estanciaId,
+  puedeEditar,
+}: {
+  estanciaId: string;
+  puedeEditar: boolean;
+}) {
   const estancia = await prisma.estancia.findUnique({
     where: { id: estanciaId },
     include: {
@@ -86,10 +92,12 @@ export async function EstanciaPanel({ estanciaId }: { estanciaId: string }) {
           {ESTADO_LABELS[estancia.estado]}
           {!estancia.activo && " · inactiva"}
         </span>
-        <DeleteEstanciaButton
-          estanciaId={estancia.id}
-          centroId={estancia.centro.id}
-        />
+        {puedeEditar && (
+          <DeleteEstanciaButton
+            estanciaId={estancia.id}
+            centroId={estancia.centro.id}
+          />
+        )}
       </div>
 
       <section>
@@ -100,6 +108,7 @@ export async function EstanciaPanel({ estanciaId }: { estanciaId: string }) {
           <EstanciaForm
             mode="edit"
             estanciaId={estancia.id}
+            readOnly={!puedeEditar}
             defaultValues={{
               tipoPrograma: estancia.tipoPrograma,
               tipoParticipante: estancia.tipoParticipante,

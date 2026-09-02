@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { estanciaSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
+import { canDoOperational, forbidden } from "@/lib/permissions";
 
 export async function POST(request: Request) {
   const auth = await requireApiUser();
@@ -19,6 +20,7 @@ export async function POST(request: Request) {
   }
 
   const d = parsed.data;
+  if (!canDoOperational(user, d.centroId)) return forbidden();
   const estancia = await prisma.estancia.create({
     data: {
       centroId: d.centroId,

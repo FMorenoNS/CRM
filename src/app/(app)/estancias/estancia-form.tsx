@@ -46,11 +46,13 @@ export function EstanciaForm({
   centros,
   estanciaId,
   defaultValues,
+  readOnly,
 }: {
   mode: "create" | "edit";
   centros?: CentroOption[];
   estanciaId?: string;
   defaultValues?: DefaultValues;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string>();
@@ -95,17 +97,18 @@ export function EstanciaForm({
       {mode === "create" && (
         <div className="flex flex-col gap-1">
           <label htmlFor="centroId" className="text-sm font-medium text-gray-700">
-            Centro de origen
+            Cliente de origen
           </label>
           <select
             id="centroId"
             name="centroId"
             required
+            disabled={readOnly}
             defaultValue={defaultValues?.centroId ?? ""}
             className={inputCls}
           >
             <option value="" disabled>
-              Selecciona un centro…
+              Selecciona un cliente…
             </option>
             {centros?.map((c) => (
               <option key={c.id} value={c.id}>
@@ -124,6 +127,7 @@ export function EstanciaForm({
           id="tipoPrograma"
           name="tipoPrograma"
           required
+          disabled={readOnly}
           defaultValue={defaultValues?.tipoPrograma ?? ""}
           className={inputCls}
         >
@@ -158,6 +162,7 @@ export function EstanciaForm({
           <select
             id="tipoParticipante"
             name="tipoParticipante"
+            disabled={readOnly}
             defaultValue={defaultValues?.tipoParticipante ?? "ALUMNOS"}
             className={inputCls}
           >
@@ -173,6 +178,7 @@ export function EstanciaForm({
             id="edadGrupo"
             name="edadGrupo"
             placeholder="Ej. 15-17 años"
+            disabled={readOnly}
             defaultValue={defaultValues?.edadGrupo ?? ""}
             className={inputCls}
           />
@@ -188,6 +194,7 @@ export function EstanciaForm({
             id="fechaInicio"
             name="fechaInicio"
             type="date"
+            disabled={readOnly}
             defaultValue={defaultValues?.fechaInicio ?? ""}
             className={inputCls}
           />
@@ -200,6 +207,7 @@ export function EstanciaForm({
             id="fechaFin"
             name="fechaFin"
             type="date"
+            disabled={readOnly}
             defaultValue={defaultValues?.fechaFin ?? ""}
             className={inputCls}
           />
@@ -217,6 +225,7 @@ export function EstanciaForm({
           <input
             id="centroReceptor"
             name="centroReceptor"
+            disabled={readOnly}
             defaultValue={defaultValues?.centroReceptor ?? "Granada"}
             className={inputCls}
           />
@@ -233,6 +242,7 @@ export function EstanciaForm({
             name="presupuestoImporte"
             type="number"
             step="0.01"
+            disabled={readOnly}
             defaultValue={defaultValues?.presupuestoImporte ?? ""}
             className={inputCls}
           />
@@ -247,6 +257,7 @@ export function EstanciaForm({
           <select
             id="estado"
             name="estado"
+            disabled={readOnly}
             defaultValue={defaultValues?.estado ?? "INTERESADO"}
             className={inputCls}
           >
@@ -267,6 +278,7 @@ export function EstanciaForm({
           id="notas"
           name="notas"
           rows={3}
+          disabled={readOnly}
           defaultValue={defaultValues?.notas ?? ""}
           className={inputCls}
         />
@@ -279,17 +291,23 @@ export function EstanciaForm({
       )}
       {saved && <p className="text-sm text-green-600">Cambios guardados.</p>}
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="self-start rounded bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-navy-dark disabled:opacity-50"
-      >
-        {isPending
-          ? "Guardando..."
-          : mode === "create"
-            ? "Crear estancia"
-            : "Guardar cambios"}
-      </button>
+      {readOnly ? (
+        <p className="text-xs text-gray-500">
+          No tienes permiso para editar esta estancia.
+        </p>
+      ) : (
+        <button
+          type="submit"
+          disabled={isPending}
+          className="self-start rounded bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-navy-dark disabled:opacity-50"
+        >
+          {isPending
+            ? "Guardando..."
+            : mode === "create"
+              ? "Crear estancia"
+              : "Guardar cambios"}
+        </button>
+      )}
     </form>
   );
 }

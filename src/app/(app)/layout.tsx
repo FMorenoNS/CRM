@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { LogoutButton } from "./logout-button";
+import { UserMenu } from "./user-menu";
 
 const NAV_LINKS = [
   { href: "/", label: "Panel" },
-  { href: "/centros", label: "Centros" },
+  { href: "/centros", label: "Clientes" },
   { href: "/estancias", label: "Pipeline" },
 ];
 
@@ -43,8 +43,7 @@ export default async function AppLayout({
             </nav>
           </div>
           <div className="flex items-center gap-4 text-sm text-gray-600">
-            <span>{session.nombre}</span>
-            <LogoutButton />
+            <UserMenu nombre={session.nombre} role={session.role} />
           </div>
         </div>
       </header>
