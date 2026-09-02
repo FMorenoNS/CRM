@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
-import { CANAL_OPTIONS, PAIS_OPTIONS } from "@/lib/labels";
+import { CANAL_OPTIONS, PAIS_OPTIONS, PROGRAMA_OPTIONS } from "@/lib/labels";
 
 type DefaultValues = {
   nombre?: string;
@@ -118,6 +118,12 @@ export function CentroCreateForm() {
       contactoCargo: (d.get("contactoCargo") as string) ?? "",
       contactoEmail: (d.get("contactoEmail") as string) ?? "",
       contactoTelefono: (d.get("contactoTelefono") as string) ?? "",
+      tipoPrograma: (d.get("tipoPrograma") as string) ?? "",
+      tipoParticipante: (d.get("tipoParticipante") as string) || "ALUMNOS",
+      edadGrupo: (d.get("edadGrupo") as string) ?? "",
+      fechaInicio: (d.get("fechaInicio") as string) ?? "",
+      presupuestoImporte: (d.get("presupuestoImporte") as string) ?? "",
+      grupoUrl: (d.get("grupoUrl") as string) ?? "",
       force,
     };
   }
@@ -195,6 +201,45 @@ export function CentroCreateForm() {
           <input
             name="contactoTelefono"
             placeholder="Teléfono"
+            className={inputCls}
+          />
+        </div>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-3 rounded border border-gray-200 p-3">
+        <legend className="px-1 text-sm font-medium text-gray-700">
+          Primera estancia (opcional)
+        </legend>
+        <div className="grid grid-cols-2 gap-3">
+          <select name="tipoPrograma" defaultValue="" className={inputCls}>
+            <option value="">Tipo de programa</option>
+            {PROGRAMA_OPTIONS.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+          <select
+            name="tipoParticipante"
+            defaultValue="ALUMNOS"
+            className={inputCls}
+          >
+            <option value="ALUMNOS">Alumnos</option>
+            <option value="PROFESORES">Profesores</option>
+          </select>
+          <input name="edadGrupo" placeholder="Edad del grupo" className={inputCls} />
+          <input name="fechaInicio" type="date" className={inputCls} />
+          <input
+            name="presupuestoImporte"
+            type="number"
+            step="0.01"
+            placeholder="Presupuesto (€)"
+            className={inputCls}
+          />
+          <input
+            name="grupoUrl"
+            type="url"
+            placeholder="URL del grupo de Facebook"
             className={inputCls}
           />
         </div>

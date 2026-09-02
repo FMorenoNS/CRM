@@ -5,6 +5,7 @@ import {
   INTERACCION_LABELS,
   DOCUMENTO_LABELS,
 } from "@/lib/labels";
+import { TaskCard } from "./task-card";
 
 const DIAS_SEGUIMIENTO = 3; // a partir de aquí, "hay que hacer algo"
 const DIAS_ABANDONO = 15; // a partir de aquí, "esto probablemente está muerto"
@@ -52,7 +53,7 @@ function contactoLinea(contacto: Contacto) {
     .join(" · ");
 }
 
-function TaskCard({
+function StaticTaskCard({
   href,
   centroNombre,
   contacto,
@@ -216,7 +217,7 @@ export default async function DashboardPage() {
       abandonadas.push({
         key: e.id,
         node: (
-          <TaskCard
+          <StaticTaskCard
             href={href}
             centroNombre={e.centro.nombre}
             contacto={contacto}
@@ -235,6 +236,8 @@ export default async function DashboardPage() {
             centroNombre={e.centro.nombre}
             contacto={contacto}
             tone="amber"
+            estanciaId={e.id}
+            estado={e.estado}
             detalle={
               dias === 0
                 ? "Nos ha contactado hoy, sin llamar todavía"
@@ -269,7 +272,7 @@ export default async function DashboardPage() {
       abandonadas.push({
         key: e.id,
         node: (
-          <TaskCard
+          <StaticTaskCard
             href={href}
             centroNombre={e.centro.nombre}
             contacto={contacto}
@@ -288,6 +291,8 @@ export default async function DashboardPage() {
         centroNombre={e.centro.nombre}
         contacto={contacto}
         tone="amber"
+        estanciaId={e.id}
+        estado={e.estado}
         detalle={detalleBase}
       />
     );
@@ -310,6 +315,8 @@ export default async function DashboardPage() {
           centroNombre={e.centro.nombre}
           contacto={e.centro.contactos[0]}
           tone="amber"
+          estanciaId={e.id}
+          estado={e.estado}
           detalle={
             diasRestantes < 0
               ? `La fecha de inicio ya pasó (hace ${-diasRestantes} días) y sigue sin cerrar · ${ESTADO_LABELS[e.estado]}`
@@ -323,7 +330,7 @@ export default async function DashboardPage() {
   const documentosFallidos: Item[] = documentosFallidosRaw.map((d) => ({
     key: d.id,
     node: (
-      <TaskCard
+      <StaticTaskCard
         href={`/centros/${d.estancia.centro.id}?estancia=${d.estanciaId}`}
         centroNombre={d.estancia.centro.nombre}
         contacto={undefined}
@@ -358,12 +365,20 @@ export default async function DashboardPage() {
 
       {totalTareas > 0 && (
         <section className="rounded-lg border border-amber-200 bg-amber-50 p-5">
-          <h2 className="text-base font-semibold text-amber-900">
-            🔔 Tareas de hoy
-            <span className="ml-2 rounded-full bg-amber-200 px-2 py-0.5 text-xs font-medium text-amber-800">
-              {totalTareas}
-            </span>
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-amber-900">
+              🔔 Tareas de hoy
+              <span className="ml-2 rounded-full bg-amber-200 px-2 py-0.5 text-xs font-medium text-amber-800">
+                {totalTareas}
+              </span>
+            </h2>
+            <Link
+              href="/estancias"
+              className="text-sm font-medium text-amber-900 hover:underline"
+            >
+              Ir a pipeline →
+            </Link>
+          </div>
           <div className="mt-4 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             <TaskGroup title="🆕 Por contactar" items={porContactar} />
             <TaskGroup title="🔁 Sin respuesta" items={sinRespuesta} />

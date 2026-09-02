@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { CentroQuickAddRow } from "./centro-quick-add-row";
+import { CANAL_OPTIONS, PAIS_OPTIONS } from "@/lib/labels";
 
 const COLUMN_COUNT = 8;
 
@@ -15,34 +16,31 @@ function formatFecha(d: Date) {
 export default async function CentrosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ pais?: string }>;
+  searchParams: Promise<{ pais?: string; nombre?: string; canal?: string }>;
 }) {
-  const { pais } = await searchParams;
+  const { pais, nombre, canal } = await searchParams;
 
-  const [centros, paises] = await Promise.all([
-    prisma.centro.findMany({
-      where: pais ? { pais } : undefined,
-      include: {
-        contactos: { orderBy: { createdAt: "asc" }, take: 1 },
-        estancias: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
-          include: {
-            interacciones: {
-              where: { tipo: "CAPTACION_FACEBOOK" },
-              take: 1,
-            },
+  const centros = await prisma.centro.findMany({
+    where: {
+      pais: pais || undefined,
+      canalOrigen: canal || undefined,
+      nombre: nombre ? { contains: nombre, mode: "insensitive" } : undefined,
+    },
+    include: {
+      contactos: { orderBy: { createdAt: "asc" }, take: 1 },
+      estancias: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        include: {
+          interacciones: {
+            where: { tipo: "CAPTACION_FACEBOOK" },
+            take: 1,
           },
         },
       },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.centro.findMany({
-      distinct: ["pais"],
-      select: { pais: true },
-      orderBy: { pais: "asc" },
-    }),
-  ]);
+    },
+    orderBy: { createdAt: "desc" },
+  });
 
   return (
     <div>
@@ -56,9 +54,19 @@ export default async function CentrosPage({
         </Link>
       </div>
 
-      <form className="mt-4 flex items-center gap-2 text-sm">
-        <label htmlFor="pais" className="text-gray-600">
-          Filtrar por país
+      <form className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+        <label htmlFor="nombre" className="text-gray-600">
+          Nombre
+        </label>
+        <input
+          id="nombre"
+          name="nombre"
+          defaultValue={nombre ?? ""}
+          placeholder="Buscar por nombre"
+          className="rounded border border-gray-300 px-2 py-1"
+        />
+        <label htmlFor="pais" className="ml-2 text-gray-600">
+          País
         </label>
         <select
           id="pais"
@@ -67,9 +75,25 @@ export default async function CentrosPage({
           className="rounded border border-gray-300 px-2 py-1"
         >
           <option value="">Todos</option>
-          {paises.map((p) => (
-            <option key={p.pais} value={p.pais}>
-              {p.pais}
+          {PAIS_OPTIONS.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+        <label htmlFor="canal" className="ml-2 text-gray-600">
+          Canal de origen
+        </label>
+        <select
+          id="canal"
+          name="canal"
+          defaultValue={canal ?? ""}
+          className="rounded border border-gray-300 px-2 py-1"
+        >
+          <option value="">Todos</option>
+          {CANAL_OPTIONS.map((c) => (
+            <option key={c} value={c}>
+              {c}
             </option>
           ))}
         </select>

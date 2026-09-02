@@ -73,42 +73,52 @@ export async function POST(request: Request) {
     detalle: centro.nombre || null,
   });
 
-  // Si desde el alta rápida se indicó tipo de programa y/o grupo de
-  // Facebook, se crea directamente la primera estancia (con su captación).
-  if (d.tipoPrograma || d.grupoUrl) {
-    const estancia = await prisma.estancia.create({
+  // Todo centro nace con una primera estancia (estado INTERESADO por
+  // defecto) para que aparezca de inmediato en las alertas del panel y en
+  // la pipeline, aunque no se haya rellenado ningún dato de la estancia.
+  const estancia = await prisma.estancia.create({
+    data: {
+      centroId: centro.id,
+      tipoPrograma: d.tipoPrograma || "Por definir",
+      tipoParticipante: d.tipoParticipante || "ALUMNOS",
+      centroReceptor: d.centroReceptor || "Granada",
+      edadGrupo: d.edadGrupo || null,
+      fechaInicio: d.fechaInicio ? new Date(d.fechaInicio) : null,
+      fechaFin: d.fechaFin ? new Date(d.fechaFin) : null,
+      presupuestoImporte:
+        d.presupuestoImporte !== undefined &&
+        d.presupuestoImporte !== null &&
+        d.presupuestoImporte !== ""
+          ? d.presupuestoImporte
+          : null,
+      notas: d.estanciaNotas || null,
+    },
+  });
+
+  await registrarHistorial({
+    centroId: centro.id,
+    actorId: user.id,
+    accion: "Estancia creada",
+    detalle: estancia.tipoPrograma,
+  });
+
+  if (d.grupoUrl) {
+    await prisma.interaccion.create({
       data: {
-        centroId: centro.id,
-        tipoPrograma: d.tipoPrograma || "Por definir",
-        tipoParticipante: "ALUMNOS",
+        estanciaId: estancia.id,
+        autorId: user.id,
+        tipo: "CAPTACION_FACEBOOK",
+        grupoUrl: d.grupoUrl,
+        resumen: "Mensaje encontrado en un grupo de Facebook",
       },
     });
 
     await registrarHistorial({
       centroId: centro.id,
       actorId: user.id,
-      accion: "Estancia creada",
-      detalle: estancia.tipoPrograma,
+      accion: "Captación de Facebook registrada",
+      detalle: d.grupoUrl,
     });
-
-    if (d.grupoUrl) {
-      await prisma.interaccion.create({
-        data: {
-          estanciaId: estancia.id,
-          autorId: user.id,
-          tipo: "CAPTACION_FACEBOOK",
-          grupoUrl: d.grupoUrl,
-          resumen: "Mensaje encontrado en un grupo de Facebook",
-        },
-      });
-
-      await registrarHistorial({
-        centroId: centro.id,
-        actorId: user.id,
-        accion: "Captación de Facebook registrada",
-        detalle: d.grupoUrl,
-      });
-    }
   }
 
   return NextResponse.json({ id: centro.id });

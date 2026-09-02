@@ -14,9 +14,9 @@ export const centroSchema = z.object({
 });
 
 // Creación: además del centro, permite un contacto principal opcional, la
-// primera estancia (tipo de programa + grupo de Facebook) y un flag `force`
-// para crear aunque se detecte un posible duplicado. Ningún campo es
-// obligatorio.
+// primera estancia (siempre se crea, con estado INTERESADO) y un flag
+// `force` para crear aunque se detecte un posible duplicado. Ningún campo
+// es obligatorio.
 export const createCentroSchema = centroSchema.extend({
   contactoNombre: z.string().trim().optional().nullable(),
   contactoCargo: z.string().trim().optional().nullable(),
@@ -29,6 +29,13 @@ export const createCentroSchema = centroSchema.extend({
     .or(z.literal("")),
   contactoTelefono: z.string().trim().optional().nullable(),
   tipoPrograma: z.string().trim().optional().nullable().or(z.literal("")),
+  tipoParticipante: z.enum(["ALUMNOS", "PROFESORES"]).optional(),
+  centroReceptor: z.string().trim().optional().nullable().or(z.literal("")),
+  edadGrupo: z.string().trim().optional().nullable(),
+  fechaInicio: z.string().trim().optional().nullable(),
+  fechaFin: z.string().trim().optional().nullable(),
+  presupuestoImporte: z.union([z.number(), z.string()]).optional().nullable(),
+  estanciaNotas: z.string().trim().optional().nullable(),
   grupoUrl: z
     .string()
     .trim()

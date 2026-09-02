@@ -1,13 +1,19 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Kanban, type EstanciaCard } from "./kanban";
+import { PAIS_OPTIONS, PROGRAMA_OPTIONS, TODOS_ESTADOS, ESTADO_LABELS } from "@/lib/labels";
 
 export default async function EstanciasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ pais?: string; participante?: string }>;
+  searchParams: Promise<{
+    pais?: string;
+    participante?: string;
+    tipoPrograma?: string;
+    estado?: string;
+  }>;
 }) {
-  const { pais, participante } = await searchParams;
+  const { pais, participante, tipoPrograma, estado } = await searchParams;
 
   const estancias = await prisma.estancia.findMany({
     where: {
@@ -16,15 +22,13 @@ export default async function EstanciasPage({
         participante === "ALUMNOS" || participante === "PROFESORES"
           ? participante
           : undefined,
+      tipoPrograma: tipoPrograma || undefined,
+      estado: (TODOS_ESTADOS as readonly string[]).includes(estado ?? "")
+        ? (estado as (typeof TODOS_ESTADOS)[number])
+        : undefined,
     },
     include: { centro: { select: { id: true, nombre: true, pais: true } } },
     orderBy: { updatedAt: "desc" },
-  });
-
-  const paises = await prisma.centro.findMany({
-    distinct: ["pais"],
-    select: { pais: true },
-    orderBy: { pais: "asc" },
   });
 
   const cards: EstanciaCard[] = estancias.map((e) => ({
@@ -62,9 +66,9 @@ export default async function EstanciasPage({
           className="rounded border border-gray-300 px-2 py-1"
         >
           <option value="">Todos</option>
-          {paises.map((p) => (
-            <option key={p.pais} value={p.pais}>
-              {p.pais}
+          {PAIS_OPTIONS.map((p) => (
+            <option key={p} value={p}>
+              {p}
             </option>
           ))}
         </select>
@@ -80,6 +84,38 @@ export default async function EstanciasPage({
           <option value="">Todos</option>
           <option value="ALUMNOS">Alumnos</option>
           <option value="PROFESORES">Profesores</option>
+        </select>
+        <label htmlFor="tipoPrograma" className="ml-2 text-gray-600">
+          Tipo de programa
+        </label>
+        <select
+          id="tipoPrograma"
+          name="tipoPrograma"
+          defaultValue={tipoPrograma ?? ""}
+          className="rounded border border-gray-300 px-2 py-1"
+        >
+          <option value="">Todos</option>
+          {PROGRAMA_OPTIONS.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+        <label htmlFor="estado" className="ml-2 text-gray-600">
+          Estado
+        </label>
+        <select
+          id="estado"
+          name="estado"
+          defaultValue={estado ?? ""}
+          className="rounded border border-gray-300 px-2 py-1"
+        >
+          <option value="">Todos</option>
+          {TODOS_ESTADOS.map((e) => (
+            <option key={e} value={e}>
+              {ESTADO_LABELS[e]}
+            </option>
+          ))}
         </select>
         <button
           type="submit"
