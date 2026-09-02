@@ -5,7 +5,7 @@ import { createCentroSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
 
 export async function POST(request: Request) {
-  const auth = await requireApiUser();
+  const auth = await requireApiUser(request);
   if (auth instanceof NextResponse) return auth;
   const user = auth;
 

@@ -90,6 +90,24 @@ model User {
   centros            Centro[] @relation("UsuarioCentros")
   // Centro propio de Novaschool al que pertenece (solo informativo).
   centroAsignado     CentroNovaschool?
+  apiKeys            ApiKey[]
+}
+
+// Claves de API para integraciones externas (p. ej. el bot de captación de
+// Facebook). Cada clave actúa "como" el usuario al que está vinculada:
+// hereda su rol y sus clientes asignados, así que la autorización no
+// necesita ninguna lógica nueva aparte de la ya existente para usuarios.
+model ApiKey {
+  id         String    @id @default(cuid())
+  nombre     String
+  hash       String    @unique
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activo     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
+  @@index([userId])
 }
 
 model Centro {

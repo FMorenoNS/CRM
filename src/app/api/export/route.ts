@@ -28,8 +28,8 @@ function diasNoches(inicio: Date | null, fin: Date | null): { dias: number | "";
   return { dias: noches + 1, noches };
 }
 
-export async function GET() {
-  const auth = await requireApiUser();
+export async function GET(request: Request) {
+  const auth = await requireApiUser(request);
   if (auth instanceof NextResponse) return auth;
   const user = auth;
 

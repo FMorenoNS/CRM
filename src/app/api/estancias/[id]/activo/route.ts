@@ -11,7 +11,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireApiUser();
+  const auth = await requireApiUser(request);
   if (auth instanceof NextResponse) return auth;
   const user = auth;
   const { id } = await params;

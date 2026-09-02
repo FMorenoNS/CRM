@@ -36,7 +36,7 @@ npm run dev                 # http://localhost:3000
 ```
 
 Usuario inicial (definido en `.env`, cámbialo tras el primer acceso):
-`admin@novaschool.es` / `CambiaEstaClave123!`
+`crmerasmus@novaschool.es` / `CambiaEstaClave123!`
 
 ## Variables de entorno
 
@@ -104,12 +104,41 @@ Las plantillas reales de presupuesto y contrato se integrarán cuando estén dis
 
 ## Roles y permisos
 
-- **Administrador**: acceso total + gestión de usuarios (`/usuarios`).
-- **Marketing** y **Dirección**: ven y editan centros, contactos y estancias.
-  (El detalle fino de qué puede editar cada rol se afinará más adelante.)
+- **Administrador**: ve y edita todos los clientes; único rol que gestiona usuarios y claves
+  de API (`/usuarios`).
+- **Marketing**: ve todos los clientes y puede registrar interacciones, enviar documentos y
+  mover la pipeline, pero no puede editar ni borrar clientes, contactos o estancias (datos
+  maestros).
+- **Dirección**: solo ve y edita (incluidos datos maestros) los clientes que tenga asignados
+  en su perfil de usuario. Al crear un cliente nuevo, se le asigna automáticamente.
+
+La lógica vive en `src/lib/permissions.ts` y se aplica tanto en las páginas (qué se lista,
+qué formularios aparecen en modo lectura) como en cada ruta de API (rechaza con 403 aunque
+alguien se salte la interfaz).
+
+## Integraciones externas (claves de API)
+
+Pensado para el bot de captación desde grupos de Facebook (o cualquier otra integración):
+cualquier ruta de `/api/*` que ya usan la interfaz acepta también una clave de API en vez de
+la sesión de navegador.
+
+1. Como administrador, crea un usuario dedicado a la integración (p. ej. rol Marketing, ya
+   que puede dar de alta clientes/estancias y registrar captaciones pero no toca datos
+   maestros de otros).
+2. En `/usuarios`, sección **Claves de API**, crea una clave "actuando como" ese usuario.
+   El valor solo se muestra una vez al crearla — guárdalo en el gestor de secretos que use
+   la integración, no se puede recuperar después.
+3. Cada petición debe incluir la cabecera `Authorization: Bearer <clave>`. La clave hereda
+   el rol y los clientes asignados del usuario al que está vinculada, así que la
+   autorización no necesita ninguna lógica distinta a la de un usuario normal.
+4. El endpoint principal para volcar un lead es `POST /api/centros`: crea el cliente, su
+   contacto principal, su primera estancia y (si se manda `grupoUrl`) la interacción de
+   captación de Facebook, todo en una sola llamada. Revocar o eliminar una clave desde la
+   misma pantalla la invalida al instante.
 
 ## Fuera de alcance (fases futuras)
 
 - Gestión de plazas/ocupación de la residencia.
 - Documentación Erasmus+ (Learning Agreement, etc.).
-- Automatización de la captación desde grupos de Facebook.
+- El bot que lee los grupos de Facebook en sí (el lado del CRM ya está listo para recibir
+  sus datos vía clave de API; falta la parte que interpreta los posts).

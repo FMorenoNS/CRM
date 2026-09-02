@@ -15,7 +15,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireApiUser();
+  const auth = await requireApiUser(request);
   if (auth instanceof NextResponse) return auth;
   const user = auth;
   const { id: estanciaId } = await params;
