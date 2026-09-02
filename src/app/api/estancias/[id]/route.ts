@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { updateEstanciaSchema } from "@/lib/validation";
+import { registrarHistorial } from "@/lib/audit";
 
 export async function PATCH(
   request: Request,
@@ -9,6 +10,7 @@ export async function PATCH(
 ) {
   const auth = await requireApiUser();
   if (auth instanceof NextResponse) return auth;
+  const user = auth;
   const { id } = await params;
 
   const body = await request.json().catch(() => null);
@@ -21,7 +23,7 @@ export async function PATCH(
   }
 
   const d = parsed.data;
-  await prisma.estancia.update({
+  const estancia = await prisma.estancia.update({
     where: { id },
     data: {
       tipoPrograma: d.tipoPrograma,
@@ -41,6 +43,13 @@ export async function PATCH(
     },
   });
 
+  await registrarHistorial({
+    centroId: estancia.centroId,
+    actorId: user.id,
+    accion: "Estancia actualizada",
+    detalle: estancia.tipoPrograma,
+  });
+
   return NextResponse.json({ ok: true });
 }
 
@@ -50,8 +59,17 @@ export async function DELETE(
 ) {
   const auth = await requireApiUser();
   if (auth instanceof NextResponse) return auth;
+  const user = auth;
   const { id } = await params;
 
-  await prisma.estancia.delete({ where: { id } });
+  const estancia = await prisma.estancia.delete({ where: { id } });
+
+  await registrarHistorial({
+    centroId: estancia.centroId,
+    actorId: user.id,
+    accion: "Estancia eliminada",
+    detalle: estancia.tipoPrograma,
+  });
+
   return NextResponse.json({ ok: true });
 }

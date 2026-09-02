@@ -6,8 +6,8 @@ export const loginSchema = z.object({
 });
 
 export const centroSchema = z.object({
-  nombre: z.string().trim().min(1, "El nombre es obligatorio."),
-  pais: z.string().trim().min(1, "El país es obligatorio."),
+  nombre: z.string().trim().optional().default(""),
+  pais: z.string().trim().optional().default(""),
   ciudad: z.string().trim().optional().nullable().or(z.literal("")),
   canalOrigen: z.string().trim().min(1).default("Facebook"),
   notas: z.string().trim().optional().nullable(),
@@ -15,8 +15,8 @@ export const centroSchema = z.object({
 
 // Creación: además del centro, permite un contacto principal opcional, la
 // primera estancia (tipo de programa + grupo de Facebook) y un flag `force`
-// para crear aunque se detecte un posible duplicado. Todo opcional salvo
-// nombre y país, para poder crear centros desde la fila rápida de la tabla.
+// para crear aunque se detecte un posible duplicado. Ningún campo es
+// obligatorio.
 export const createCentroSchema = centroSchema.extend({
   contactoNombre: z.string().trim().optional().nullable(),
   contactoCargo: z.string().trim().optional().nullable(),

@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { estanciaSchema } from "@/lib/validation";
+import { registrarHistorial } from "@/lib/audit";
 
 export async function POST(request: Request) {
   const auth = await requireApiUser();
   if (auth instanceof NextResponse) return auth;
+  const user = auth;
 
   const body = await request.json().catch(() => null);
   const parsed = estanciaSchema.safeParse(body);
@@ -35,6 +37,13 @@ export async function POST(request: Request) {
           : null,
       notas: d.notas || null,
     },
+  });
+
+  await registrarHistorial({
+    centroId: d.centroId,
+    actorId: user.id,
+    accion: "Estancia creada",
+    detalle: estancia.tipoPrograma,
   });
 
   return NextResponse.json({ id: estancia.id });

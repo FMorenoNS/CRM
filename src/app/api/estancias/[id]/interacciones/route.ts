@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { interaccionSchema } from "@/lib/validation";
+import { registrarHistorial } from "@/lib/audit";
+import { INTERACCION_LABELS } from "@/lib/labels";
 
 export async function POST(
   request: Request,
@@ -30,6 +32,19 @@ export async function POST(
       fecha: parsed.data.fecha ? new Date(parsed.data.fecha) : new Date(),
     },
   });
+
+  const estancia = await prisma.estancia.findUnique({
+    where: { id: estanciaId },
+    select: { centroId: true },
+  });
+  if (estancia) {
+    await registrarHistorial({
+      centroId: estancia.centroId,
+      actorId: user.id,
+      accion: `Interacción registrada: ${INTERACCION_LABELS[parsed.data.tipo] ?? parsed.data.tipo}`,
+      detalle: parsed.data.resumen,
+    });
+  }
 
   return NextResponse.json({ id: interaccion.id });
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { captacionSchema } from "@/lib/validation";
+import { registrarHistorial } from "@/lib/audit";
 
 // Crea o actualiza la interacción de captación de Facebook (una por estancia).
 export async function PUT(
@@ -44,6 +45,18 @@ export async function PUT(
         tipo: "CAPTACION_FACEBOOK",
         ...data,
       },
+    });
+  }
+
+  const estancia = await prisma.estancia.findUnique({
+    where: { id: estanciaId },
+    select: { centroId: true },
+  });
+  if (estancia) {
+    await registrarHistorial({
+      centroId: estancia.centroId,
+      actorId: user.id,
+      accion: "Captación de Facebook actualizada",
     });
   }
 

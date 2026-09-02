@@ -8,6 +8,16 @@ import { PARTICIPANTE_LABELS } from "@/lib/labels";
 import { EstanciaSelector, type EstanciaOption } from "./estancia-selector";
 import { EstanciaPanel } from "./estancia-panel";
 
+function formatFechaHora(d: Date): string {
+  return d.toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function estanciaLabel(e: {
   tipoParticipante: string;
   edadGrupo: string | null;
@@ -39,13 +49,21 @@ export default async function CentroDetailPage({
   const { id } = await params;
   const { estancia: estanciaParam } = await searchParams;
 
-  const centro = await prisma.centro.findUnique({
-    where: { id },
-    include: {
-      contactos: { orderBy: { createdAt: "asc" } },
-      estancias: { orderBy: { createdAt: "desc" } },
-    },
-  });
+  const [centro, historial] = await Promise.all([
+    prisma.centro.findUnique({
+      where: { id },
+      include: {
+        contactos: { orderBy: { createdAt: "asc" } },
+        estancias: { orderBy: { createdAt: "desc" } },
+      },
+    }),
+    prisma.auditLog.findMany({
+      where: { centroId: id },
+      orderBy: { createdAt: "desc" },
+      include: { actor: { select: { nombre: true } } },
+      take: 200,
+    }),
+  ]);
 
   if (!centro) notFound();
 
@@ -148,6 +166,33 @@ export default async function CentroDetailPage({
             </p>
           )}
         </div>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-medium text-gray-900">
+          Historial de cambios
+        </h2>
+        <ul className="mt-4 flex flex-col gap-2">
+          {historial.map((h) => (
+            <li
+              key={h.id}
+              className="rounded border border-gray-200 bg-white px-4 py-2 text-sm"
+            >
+              <p className="text-gray-900">
+                <span className="font-medium">{h.accion}</span>{" "}
+                <span className="text-gray-400">
+                  · {formatFechaHora(h.createdAt)} · {h.actor.nombre}
+                </span>
+              </p>
+              {h.detalle && <p className="text-gray-600">{h.detalle}</p>}
+            </li>
+          ))}
+          {historial.length === 0 && (
+            <p className="text-sm text-gray-500">
+              Sin cambios registrados todavía.
+            </p>
+          )}
+        </ul>
       </section>
     </div>
   );

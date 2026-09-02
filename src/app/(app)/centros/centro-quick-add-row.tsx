@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
-import { CANAL_OPTIONS, PROGRAMA_OPTIONS } from "@/lib/labels";
+import { CANAL_OPTIONS, PAIS_OPTIONS, PROGRAMA_OPTIONS } from "@/lib/labels";
 
 type Duplicado = {
   id: string;
@@ -87,11 +87,17 @@ export function CentroQuickAddRow({ colSpan }: { colSpan: number }) {
           >
             <input
               name="nombre"
-              required
               placeholder="Nombre del centro"
               className={cellInputCls}
             />
-            <input name="pais" required placeholder="País" className={cellInputCls} />
+            <select name="pais" defaultValue="" className={cellInputCls}>
+              <option value="">País</option>
+              {PAIS_OPTIONS.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
             <div className={`${cellInputCls} flex items-center border-dashed text-gray-400`}>
               Hoy
             </div>

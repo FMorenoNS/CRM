@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { isEmailConfigured, sendDocumentEmail } from "@/lib/email";
+import { registrarHistorial } from "@/lib/audit";
 
 const schema = z.object({
   tipo: z.enum(["PRESUPUESTO", "CONTRATO"]),
@@ -40,6 +41,11 @@ export async function POST(
   const label =
     parsed.data.tipo === "PRESUPUESTO" ? "presupuesto" : "contrato";
 
+  const estancia = await prisma.estancia.findUnique({
+    where: { id: estanciaId },
+    select: { centroId: true },
+  });
+
   try {
     await sendDocumentEmail({
       to: parsed.data.destinatario,
@@ -57,6 +63,15 @@ export async function POST(
       },
     });
 
+    if (estancia) {
+      await registrarHistorial({
+        centroId: estancia.centroId,
+        actorId: user.id,
+        accion: `Documento enviado: ${label}`,
+        detalle: parsed.data.destinatario,
+      });
+    }
+
     return NextResponse.json({ ok: true });
   } catch (error) {
     await prisma.documentoEnviado.create({
@@ -69,6 +84,16 @@ export async function POST(
         detalle: error instanceof Error ? error.message : "Error desconocido",
       },
     });
+
+    if (estancia) {
+      await registrarHistorial({
+        centroId: estancia.centroId,
+        actorId: user.id,
+        accion: `Envío de documento fallido: ${label}`,
+        detalle: parsed.data.destinatario,
+      });
+    }
+
     return NextResponse.json(
       { error: "No se pudo enviar el correo." },
       { status: 500 }

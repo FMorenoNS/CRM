@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
+import { registrarHistorial } from "@/lib/audit";
 
 const schema = z.object({ activo: z.boolean() });
 
@@ -11,6 +12,7 @@ export async function PATCH(
 ) {
   const auth = await requireApiUser();
   if (auth instanceof NextResponse) return auth;
+  const user = auth;
   const { id } = await params;
 
   const body = await request.json().catch(() => null);
@@ -19,9 +21,18 @@ export async function PATCH(
     return NextResponse.json({ error: "Datos inválidos." }, { status: 400 });
   }
 
-  await prisma.estancia.update({
+  const estancia = await prisma.estancia.update({
     where: { id },
     data: { activo: parsed.data.activo },
+  });
+
+  await registrarHistorial({
+    centroId: estancia.centroId,
+    actorId: user.id,
+    accion: parsed.data.activo
+      ? "Estancia marcada como activa"
+      : "Estancia marcada como inactiva",
+    detalle: estancia.tipoPrograma,
   });
 
   return NextResponse.json({ ok: true });

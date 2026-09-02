@@ -6,7 +6,7 @@ import { LogoutButton } from "./logout-button";
 const NAV_LINKS = [
   { href: "/", label: "Panel" },
   { href: "/centros", label: "Centros" },
-  { href: "/estancias", label: "Estancias" },
+  { href: "/estancias", label: "Pipeline" },
 ];
 
 export default async function AppLayout({

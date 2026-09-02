@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { estadoSchema } from "@/lib/validation";
+import { registrarHistorial } from "@/lib/audit";
+import { ESTADO_LABELS } from "@/lib/labels";
 
 export async function PATCH(
   request: Request,
@@ -9,6 +11,7 @@ export async function PATCH(
 ) {
   const auth = await requireApiUser();
   if (auth instanceof NextResponse) return auth;
+  const user = auth;
   const { id } = await params;
 
   const body = await request.json().catch(() => null);
@@ -20,9 +23,16 @@ export async function PATCH(
     );
   }
 
-  await prisma.estancia.update({
+  const estancia = await prisma.estancia.update({
     where: { id },
     data: { estado: parsed.data.estado },
+  });
+
+  await registrarHistorial({
+    centroId: estancia.centroId,
+    actorId: user.id,
+    accion: "Estado de la estancia cambiado",
+    detalle: ESTADO_LABELS[estancia.estado] ?? estancia.estado,
   });
 
   return NextResponse.json({ ok: true });

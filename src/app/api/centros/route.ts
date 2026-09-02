@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { createCentroSchema } from "@/lib/validation";
+import { registrarHistorial } from "@/lib/audit";
 
 export async function POST(request: Request) {
   const auth = await requireApiUser();
@@ -65,6 +66,13 @@ export async function POST(request: Request) {
     },
   });
 
+  await registrarHistorial({
+    centroId: centro.id,
+    actorId: user.id,
+    accion: "Centro creado",
+    detalle: centro.nombre || null,
+  });
+
   // Si desde el alta rápida se indicó tipo de programa y/o grupo de
   // Facebook, se crea directamente la primera estancia (con su captación).
   if (d.tipoPrograma || d.grupoUrl) {
@@ -76,6 +84,13 @@ export async function POST(request: Request) {
       },
     });
 
+    await registrarHistorial({
+      centroId: centro.id,
+      actorId: user.id,
+      accion: "Estancia creada",
+      detalle: estancia.tipoPrograma,
+    });
+
     if (d.grupoUrl) {
       await prisma.interaccion.create({
         data: {
@@ -85,6 +100,13 @@ export async function POST(request: Request) {
           grupoUrl: d.grupoUrl,
           resumen: "Mensaje encontrado en un grupo de Facebook",
         },
+      });
+
+      await registrarHistorial({
+        centroId: centro.id,
+        actorId: user.id,
+        accion: "Captación de Facebook registrada",
+        detalle: d.grupoUrl,
       });
     }
   }

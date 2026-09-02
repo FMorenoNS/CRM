@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
-import { CANAL_OPTIONS } from "@/lib/labels";
+import { CANAL_OPTIONS, PAIS_OPTIONS } from "@/lib/labels";
 
 type DefaultValues = {
   nombre?: string;
@@ -32,7 +32,6 @@ function CentroFields({ defaultValues }: { defaultValues?: DefaultValues }) {
         <input
           id="nombre"
           name="nombre"
-          required
           defaultValue={defaultValues?.nombre}
           className={inputCls}
         />
@@ -42,13 +41,19 @@ function CentroFields({ defaultValues }: { defaultValues?: DefaultValues }) {
           <label htmlFor="pais" className="text-sm font-medium text-gray-700">
             País
           </label>
-          <input
+          <select
             id="pais"
             name="pais"
-            required
-            defaultValue={defaultValues?.pais}
+            defaultValue={defaultValues?.pais ?? ""}
             className={inputCls}
-          />
+          >
+            <option value="">Selecciona un país</option>
+            {PAIS_OPTIONS.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="ciudad" className="text-sm font-medium text-gray-700">

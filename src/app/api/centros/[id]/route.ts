@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { centroSchema } from "@/lib/validation";
+import { registrarHistorial } from "@/lib/audit";
 
 export async function PATCH(
   request: Request,
@@ -9,6 +10,7 @@ export async function PATCH(
 ) {
   const auth = await requireApiUser();
   if (auth instanceof NextResponse) return auth;
+  const user = auth;
   const { id } = await params;
 
   const body = await request.json().catch(() => null);
@@ -29,6 +31,12 @@ export async function PATCH(
       canalOrigen: parsed.data.canalOrigen || "Facebook",
       notas: parsed.data.notas || null,
     },
+  });
+
+  await registrarHistorial({
+    centroId: id,
+    actorId: user.id,
+    accion: "Datos del centro actualizados",
   });
 
   return NextResponse.json({ ok: true });

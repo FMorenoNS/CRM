@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { contactoSchema } from "@/lib/validation";
+import { registrarHistorial } from "@/lib/audit";
 
 export async function POST(
   request: Request,
@@ -9,6 +10,7 @@ export async function POST(
 ) {
   const auth = await requireApiUser();
   if (auth instanceof NextResponse) return auth;
+  const user = auth;
   const { id: centroId } = await params;
 
   const body = await request.json().catch(() => null);
@@ -28,6 +30,13 @@ export async function POST(
       email: parsed.data.email || null,
       cargo: parsed.data.cargo || null,
     },
+  });
+
+  await registrarHistorial({
+    centroId,
+    actorId: user.id,
+    accion: "Contacto añadido",
+    detalle: contacto.nombre,
   });
 
   return NextResponse.json({ id: contacto.id });

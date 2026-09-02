@@ -62,6 +62,7 @@ model User {
 
   interacciones      Interaccion[]
   documentosEnviados DocumentoEnviado[]
+  registrosHistorial AuditLog[]
 }
 
 model Centro {
@@ -76,6 +77,7 @@ model Centro {
 
   contactos Contacto[]
   estancias Estancia[]
+  historial AuditLog[]
 
   @@index([pais])
   @@index([nombre])
@@ -152,4 +154,20 @@ model DocumentoEnviado {
   detalle      String?
 
   @@index([estanciaId])
+}
+
+// Historial de cambios de un centro: registra qué se hizo, quién lo hizo y
+// cuándo, sobre el centro o cualquiera de sus contactos/estancias/
+// interacciones/documentos asociados.
+model AuditLog {
+  id        String   @id @default(cuid())
+  centroId  String
+  centro    Centro   @relation(fields: [centroId], references: [id], onDelete: Cascade)
+  actorId   String
+  actor     User     @relation(fields: [actorId], references: [id])
+  accion    String
+  detalle   String?
+  createdAt DateTime @default(now())
+
+  @@index([centroId, createdAt])
 }

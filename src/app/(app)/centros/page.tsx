@@ -83,7 +83,7 @@ export default async function CentrosPage({
 
       <div className="mt-6 overflow-x-auto rounded border border-gray-200 bg-white">
         <table className="w-full min-w-[1000px] text-sm">
-          <thead className="bg-gray-50 text-left text-gray-500">
+          <thead className="bg-gray-50 text-center text-gray-500">
             <tr>
               <th className="px-4 py-2">Centro</th>
               <th className="px-4 py-2">País</th>
@@ -101,7 +101,7 @@ export default async function CentrosPage({
               const estancia = centro.estancias[0];
               const grupoUrl = estancia?.interacciones[0]?.grupoUrl ?? null;
               return (
-                <tr key={centro.id} className="border-t border-gray-100">
+                <tr key={centro.id} className="border-t border-gray-100 text-center">
                   <td className="px-4 py-2">
                     <Link
                       href={`/centros/${centro.id}`}
