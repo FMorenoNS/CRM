@@ -54,12 +54,20 @@ export default async function CentrosPage({
     <div>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-gray-900">Clientes</h1>
-        <Link
-          href="/centros/nuevo"
-          className="rounded bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-navy-dark"
-        >
-          Nuevo cliente
-        </Link>
+        <div className="flex gap-2">
+          <a
+            href="/api/export"
+            className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+          >
+            Exportar a Excel
+          </a>
+          <Link
+            href="/centros/nuevo"
+            className="rounded bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-navy-dark"
+          >
+            Nuevo cliente
+          </Link>
+        </div>
       </div>
 
       <form className="mt-4 flex flex-wrap items-center gap-2 text-sm">
