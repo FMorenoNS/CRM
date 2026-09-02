@@ -37,8 +37,16 @@ export async function PATCH(
     where: { id },
     data: {
       tipoPrograma: d.tipoPrograma,
+      tipoProyecto: d.tipoProyecto || null,
       tipoParticipante: d.tipoParticipante,
       centroReceptor: d.centroReceptor || "Granada",
+      provincia: d.provincia || null,
+      numeroAlumnos:
+        d.numeroAlumnos !== undefined &&
+        d.numeroAlumnos !== null &&
+        d.numeroAlumnos !== ""
+          ? Number(d.numeroAlumnos)
+          : null,
       edadGrupo: d.edadGrupo || null,
       fechaInicio: d.fechaInicio ? new Date(d.fechaInicio) : null,
       fechaFin: d.fechaFin ? new Date(d.fechaFin) : null,

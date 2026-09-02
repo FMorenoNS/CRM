@@ -57,6 +57,20 @@ enum TipoCliente {
   PERSONA
 }
 
+// Tipo de proyecto de la estancia: programa Erasmus+ o estancia privada
+// (pagada directamente, fuera de fondos europeos).
+enum TipoProyecto {
+  ERASMUS
+  PRIVADO
+}
+
+// Centro propio de Novaschool (residencia/campus) al que pertenece un
+// usuario del CRM. No confundir con el "cliente" (Centro/colegio externo).
+enum CentroNovaschool {
+  OPENWORLD
+  MEDINA_ELVIRA
+}
+
 model User {
   id           String   @id @default(cuid())
   nombre       String
@@ -74,6 +88,8 @@ model User {
   // restricción real al rol DIRECCION (ADMIN y MARKETING ven todos los
   // clientes independientemente de esta lista).
   centros            Centro[] @relation("UsuarioCentros")
+  // Centro propio de Novaschool al que pertenece (solo informativo).
+  centroAsignado     CentroNovaschool?
 }
 
 model Centro {
@@ -114,6 +130,9 @@ model Estancia {
   centroId           String
   centro             Centro           @relation(fields: [centroId], references: [id], onDelete: Cascade)
   tipoPrograma       String
+  tipoProyecto       TipoProyecto?
+  provincia          String?
+  numeroAlumnos      Int?
   fechaInicio        DateTime?
   fechaFin           DateTime?
   edadGrupo          String?

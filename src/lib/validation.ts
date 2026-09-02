@@ -30,8 +30,11 @@ export const createCentroSchema = centroSchema.extend({
     .or(z.literal("")),
   contactoTelefono: z.string().trim().optional().nullable(),
   tipoPrograma: z.string().trim().optional().nullable().or(z.literal("")),
+  tipoProyecto: z.enum(["ERASMUS", "PRIVADO"]).optional().nullable().or(z.literal("")),
   tipoParticipante: z.enum(["ALUMNOS", "PROFESORES"]).optional(),
   centroReceptor: z.string().trim().optional().nullable().or(z.literal("")),
+  provincia: z.string().trim().optional().nullable(),
+  numeroAlumnos: z.union([z.number(), z.string()]).optional().nullable(),
   edadGrupo: z.string().trim().optional().nullable(),
   fechaInicio: z.string().trim().optional().nullable(),
   fechaFin: z.string().trim().optional().nullable(),
@@ -78,8 +81,11 @@ const ESTADOS = [
 // fijado por la URL).
 const estanciaBaseSchema = z.object({
   tipoPrograma: z.string().trim().min(1, "El tipo de programa es obligatorio."),
+  tipoProyecto: z.enum(["ERASMUS", "PRIVADO"]).optional().nullable().or(z.literal("")),
   tipoParticipante: z.enum(["ALUMNOS", "PROFESORES"]),
   centroReceptor: z.string().trim().min(1).default("Granada"),
+  provincia: z.string().trim().optional().nullable(),
+  numeroAlumnos: z.union([z.number(), z.string()]).optional().nullable(),
   edadGrupo: z.string().trim().optional().nullable(),
   fechaInicio: z.string().trim().optional().nullable(),
   fechaFin: z.string().trim().optional().nullable(),
@@ -134,6 +140,11 @@ export const userSchema = z.object({
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
   role: z.enum(["ADMIN", "MARKETING", "DIRECCION"]),
   centroIds: z.array(z.string()).optional(),
+  centroAsignado: z
+    .enum(["OPENWORLD", "MEDINA_ELVIRA"])
+    .optional()
+    .nullable()
+    .or(z.literal("")),
 });
 
 export const ESTADO_VALUES = ESTADOS;

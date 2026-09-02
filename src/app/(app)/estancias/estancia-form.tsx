@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, type ChangeEvent, type FormEvent } from "react";
 import {
   TODOS_ESTADOS,
   ESTADO_LABELS,
   PROGRAMA_OPTIONS,
+  TIPO_PROYECTO_LABELS,
 } from "@/lib/labels";
 
 export type CentroOption = { id: string; nombre: string };
@@ -13,8 +14,11 @@ export type CentroOption = { id: string; nombre: string };
 type DefaultValues = {
   centroId?: string;
   tipoPrograma?: string;
+  tipoProyecto?: string | null;
   tipoParticipante?: "ALUMNOS" | "PROFESORES";
   centroReceptor?: string;
+  provincia?: string | null;
+  numeroAlumnos?: string | null;
   edadGrupo?: string | null;
   fechaInicio?: string | null;
   fechaFin?: string | null;
@@ -28,8 +32,11 @@ function readValues(form: HTMLFormElement) {
   return {
     centroId: (data.get("centroId") as string) ?? "",
     tipoPrograma: (data.get("tipoPrograma") as string) ?? "",
+    tipoProyecto: (data.get("tipoProyecto") as string) ?? "",
     tipoParticipante: (data.get("tipoParticipante") as string) ?? "ALUMNOS",
     centroReceptor: (data.get("centroReceptor") as string) || "Granada",
+    provincia: (data.get("provincia") as string) ?? "",
+    numeroAlumnos: (data.get("numeroAlumnos") as string) ?? "",
     edadGrupo: (data.get("edadGrupo") as string) ?? "",
     fechaInicio: (data.get("fechaInicio") as string) ?? "",
     fechaFin: (data.get("fechaFin") as string) ?? "",
@@ -37,6 +44,20 @@ function readValues(form: HTMLFormElement) {
     presupuestoImporte: (data.get("presupuestoImporte") as string) ?? "",
     notas: (data.get("notas") as string) ?? "",
   };
+}
+
+// El último día del viaje no suma noche (solo se cuenta como día), p. ej.
+// del 19/5 al 23/5 son 5 días y 4 noches.
+function calcularDiasNoches(
+  inicio: string,
+  fin: string
+): { dias: number; noches: number } | null {
+  if (!inicio || !fin) return null;
+  const d1 = new Date(`${inicio}T00:00:00`);
+  const d2 = new Date(`${fin}T00:00:00`);
+  const noches = Math.round((d2.getTime() - d1.getTime()) / 86_400_000);
+  if (noches < 0) return null;
+  return { dias: noches + 1, noches };
 }
 
 const inputCls = "rounded border border-gray-300 px-3 py-2 text-sm";
@@ -58,6 +79,9 @@ export function EstanciaForm({
   const [error, setError] = useState<string>();
   const [saved, setSaved] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const [fechaInicio, setFechaInicio] = useState(defaultValues?.fechaInicio ?? "");
+  const [fechaFin, setFechaFin] = useState(defaultValues?.fechaFin ?? "");
+  const diasNoches = calcularDiasNoches(fechaInicio, fechaFin);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -119,36 +143,57 @@ export function EstanciaForm({
         </div>
       )}
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="tipoPrograma" className="text-sm font-medium text-gray-700">
-          Tipo de programa
-        </label>
-        <select
-          id="tipoPrograma"
-          name="tipoPrograma"
-          required
-          disabled={readOnly}
-          defaultValue={defaultValues?.tipoPrograma ?? ""}
-          className={inputCls}
-        >
-          <option value="" disabled>
-            Selecciona un programa…
-          </option>
-          {PROGRAMA_OPTIONS.map((p) => (
-            <option key={p} value={p}>
-              {p}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col gap-1">
+          <label htmlFor="tipoPrograma" className="text-sm font-medium text-gray-700">
+            Tipo de programa
+          </label>
+          <select
+            id="tipoPrograma"
+            name="tipoPrograma"
+            required
+            disabled={readOnly}
+            defaultValue={defaultValues?.tipoPrograma ?? ""}
+            className={inputCls}
+          >
+            <option value="" disabled>
+              Selecciona un programa…
             </option>
-          ))}
-          {/* Conserva un valor antiguo que no esté en la lista actual */}
-          {defaultValues?.tipoPrograma &&
-            !PROGRAMA_OPTIONS.includes(
-              defaultValues.tipoPrograma as (typeof PROGRAMA_OPTIONS)[number]
-            ) && (
-              <option value={defaultValues.tipoPrograma}>
-                {defaultValues.tipoPrograma} (antiguo)
+            {PROGRAMA_OPTIONS.map((p) => (
+              <option key={p} value={p}>
+                {p}
               </option>
-            )}
-        </select>
+            ))}
+            {/* Conserva un valor antiguo que no esté en la lista actual */}
+            {defaultValues?.tipoPrograma &&
+              !PROGRAMA_OPTIONS.includes(
+                defaultValues.tipoPrograma as (typeof PROGRAMA_OPTIONS)[number]
+              ) && (
+                <option value={defaultValues.tipoPrograma}>
+                  {defaultValues.tipoPrograma} (antiguo)
+                </option>
+              )}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="tipoProyecto" className="text-sm font-medium text-gray-700">
+            Tipo de proyecto
+          </label>
+          <select
+            id="tipoProyecto"
+            name="tipoProyecto"
+            disabled={readOnly}
+            defaultValue={defaultValues?.tipoProyecto ?? ""}
+            className={inputCls}
+          >
+            <option value="">Sin definir</option>
+            {Object.entries(TIPO_PROYECTO_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -185,6 +230,22 @@ export function EstanciaForm({
         </div>
       </div>
 
+      <div className="flex flex-col gap-1">
+        <label htmlFor="numeroAlumnos" className="text-sm font-medium text-gray-700">
+          Número de alumnos
+        </label>
+        <input
+          id="numeroAlumnos"
+          name="numeroAlumnos"
+          type="number"
+          min="0"
+          step="1"
+          disabled={readOnly}
+          defaultValue={defaultValues?.numeroAlumnos ?? ""}
+          className={inputCls}
+        />
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1">
           <label htmlFor="fechaInicio" className="text-sm font-medium text-gray-700">
@@ -195,7 +256,10 @@ export function EstanciaForm({
             name="fechaInicio"
             type="date"
             disabled={readOnly}
-            defaultValue={defaultValues?.fechaInicio ?? ""}
+            value={fechaInicio}
+            onChange={(event: ChangeEvent<HTMLInputElement>) =>
+              setFechaInicio(event.target.value)
+            }
             className={inputCls}
           />
         </div>
@@ -208,11 +272,20 @@ export function EstanciaForm({
             name="fechaFin"
             type="date"
             disabled={readOnly}
-            defaultValue={defaultValues?.fechaFin ?? ""}
+            value={fechaFin}
+            onChange={(event: ChangeEvent<HTMLInputElement>) =>
+              setFechaFin(event.target.value)
+            }
             className={inputCls}
           />
         </div>
       </div>
+      {diasNoches && (
+        <p className="-mt-2 text-xs text-gray-500">
+          {diasNoches.dias} día{diasNoches.dias === 1 ? "" : "s"} ·{" "}
+          {diasNoches.noches} noche{diasNoches.noches === 1 ? "" : "s"}
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1">
@@ -231,22 +304,35 @@ export function EstanciaForm({
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label
-            htmlFor="presupuestoImporte"
-            className="text-sm font-medium text-gray-700"
-          >
-            Presupuesto (€)
+          <label htmlFor="provincia" className="text-sm font-medium text-gray-700">
+            Provincia
           </label>
           <input
-            id="presupuestoImporte"
-            name="presupuestoImporte"
-            type="number"
-            step="0.01"
+            id="provincia"
+            name="provincia"
             disabled={readOnly}
-            defaultValue={defaultValues?.presupuestoImporte ?? ""}
+            defaultValue={defaultValues?.provincia ?? "Granada"}
             className={inputCls}
           />
         </div>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label
+          htmlFor="presupuestoImporte"
+          className="text-sm font-medium text-gray-700"
+        >
+          Presupuesto (€)
+        </label>
+        <input
+          id="presupuestoImporte"
+          name="presupuestoImporte"
+          type="number"
+          step="0.01"
+          disabled={readOnly}
+          defaultValue={defaultValues?.presupuestoImporte ?? ""}
+          className={inputCls}
+        />
       </div>
 
       {mode === "edit" && (

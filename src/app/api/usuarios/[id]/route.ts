@@ -12,6 +12,11 @@ const updateSchema = z.object({
     .min(8, "La contraseña debe tener al menos 8 caracteres.")
     .optional(),
   centroIds: z.array(z.string()).optional(),
+  centroAsignado: z
+    .enum(["OPENWORLD", "MEDINA_ELVIRA"])
+    .optional()
+    .nullable()
+    .or(z.literal("")),
 });
 
 export async function PATCH(
@@ -36,6 +41,7 @@ export async function PATCH(
     activo?: boolean;
     passwordHash?: string;
     centros?: { set: { id: string }[] };
+    centroAsignado?: "OPENWORLD" | "MEDINA_ELVIRA" | null;
   } = {};
   if (parsed.data.role) data.role = parsed.data.role;
   if (parsed.data.activo !== undefined) data.activo = parsed.data.activo;
@@ -44,6 +50,9 @@ export async function PATCH(
   }
   if (parsed.data.centroIds) {
     data.centros = { set: parsed.data.centroIds.map((cid) => ({ id: cid })) };
+  }
+  if (parsed.data.centroAsignado !== undefined) {
+    data.centroAsignado = parsed.data.centroAsignado || null;
   }
 
   await prisma.user.update({ where: { id }, data });

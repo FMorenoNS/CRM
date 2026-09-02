@@ -111,8 +111,14 @@ export async function EstanciaPanel({
             readOnly={!puedeEditar}
             defaultValues={{
               tipoPrograma: estancia.tipoPrograma,
+              tipoProyecto: estancia.tipoProyecto,
               tipoParticipante: estancia.tipoParticipante,
               centroReceptor: estancia.centroReceptor,
+              provincia: estancia.provincia,
+              numeroAlumnos:
+                estancia.numeroAlumnos !== null
+                  ? String(estancia.numeroAlumnos)
+                  : "",
               edadGrupo: estancia.edadGrupo,
               fechaInicio: toDateInput(estancia.fechaInicio),
               fechaFin: toDateInput(estancia.fechaFin),

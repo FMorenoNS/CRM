@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
-import { CANAL_OPTIONS, PAIS_OPTIONS, PROGRAMA_OPTIONS } from "@/lib/labels";
+import {
+  CANAL_OPTIONS,
+  PAIS_OPTIONS,
+  PROGRAMA_OPTIONS,
+  TIPO_PROYECTO_LABELS,
+} from "@/lib/labels";
 
 type DefaultValues = {
   nombre?: string;
@@ -157,7 +162,10 @@ export function CentroCreateForm() {
       contactoEmail: (d.get("contactoEmail") as string) ?? "",
       contactoTelefono: (d.get("contactoTelefono") as string) ?? "",
       tipoPrograma: (d.get("tipoPrograma") as string) ?? "",
+      tipoProyecto: (d.get("tipoProyecto") as string) ?? "",
       tipoParticipante: (d.get("tipoParticipante") as string) || "ALUMNOS",
+      provincia: (d.get("provincia") as string) ?? "",
+      numeroAlumnos: (d.get("numeroAlumnos") as string) ?? "",
       edadGrupo: (d.get("edadGrupo") as string) ?? "",
       fechaInicio: (d.get("fechaInicio") as string) ?? "",
       presupuestoImporte: (d.get("presupuestoImporte") as string) ?? "",
@@ -257,6 +265,14 @@ export function CentroCreateForm() {
               </option>
             ))}
           </select>
+          <select name="tipoProyecto" defaultValue="" className={inputCls}>
+            <option value="">Tipo de proyecto</option>
+            {Object.entries(TIPO_PROYECTO_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
           <select
             name="tipoParticipante"
             defaultValue="ALUMNOS"
@@ -266,7 +282,21 @@ export function CentroCreateForm() {
             <option value="PROFESORES">Profesores</option>
           </select>
           <input name="edadGrupo" placeholder="Edad del grupo" className={inputCls} />
+          <input
+            name="numeroAlumnos"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="Número de alumnos"
+            className={inputCls}
+          />
           <input name="fechaInicio" type="date" className={inputCls} />
+          <input
+            name="provincia"
+            placeholder="Provincia"
+            defaultValue="Granada"
+            className={inputCls}
+          />
           <input
             name="presupuestoImporte"
             type="number"

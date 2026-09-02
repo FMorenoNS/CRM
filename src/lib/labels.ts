@@ -148,3 +148,14 @@ export const ROLE_LABELS: Record<string, string> = {
   MARKETING: "Marketing",
   DIRECCION: "Dirección",
 };
+
+export const TIPO_PROYECTO_LABELS: Record<string, string> = {
+  ERASMUS: "Erasmus",
+  PRIVADO: "Privado",
+};
+
+// Centros propios de Novaschool a los que puede pertenecer un usuario.
+export const CENTRO_ASIGNADO_LABELS: Record<string, string> = {
+  OPENWORLD: "Openworld",
+  MEDINA_ELVIRA: "Medina Elvira",
+};

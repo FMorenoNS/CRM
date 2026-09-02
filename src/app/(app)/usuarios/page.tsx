@@ -18,6 +18,7 @@ export default async function UsuariosPage() {
         role: true,
         activo: true,
         centros: { select: { id: true } },
+        centroAsignado: true,
       },
     }),
     prisma.centro.findMany({
@@ -33,6 +34,7 @@ export default async function UsuariosPage() {
     role: u.role,
     activo: u.activo,
     centroIds: u.centros.map((c) => c.id),
+    centroAsignado: u.centroAsignado,
   }));
 
   return (

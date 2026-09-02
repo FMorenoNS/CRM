@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent, type FormEvent } from "react";
+import { CENTRO_ASIGNADO_LABELS } from "@/lib/labels";
 
 export type UsuarioRow = {
   id: string;
@@ -10,6 +11,7 @@ export type UsuarioRow = {
   role: string;
   activo: boolean;
   centroIds: string[];
+  centroAsignado: string | null;
 };
 
 export type ClienteOption = { id: string; nombre: string };
@@ -41,6 +43,7 @@ function CreateForm({ clientes }: { clientes: ClienteOption[] }) {
       password: (data.get("password") as string) ?? "",
       role: (data.get("role") as string) ?? "MARKETING",
       centroIds: data.getAll("centroIds") as string[],
+      centroAsignado: (data.get("centroAsignado") as string) || "",
     };
     try {
       const res = await fetch("/api/usuarios", {
@@ -91,6 +94,14 @@ function CreateForm({ clientes }: { clientes: ClienteOption[] }) {
           <option value="DIRECCION">Dirección</option>
           <option value="ADMIN">Administrador</option>
         </select>
+        <select name="centroAsignado" defaultValue="" className={inputCls}>
+          <option value="">Centro asignado (sin asignar)</option>
+          {Object.entries(CENTRO_ASIGNADO_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="centroIds" className="text-sm font-medium text-gray-700">
@@ -124,6 +135,42 @@ function CreateForm({ clientes }: { clientes: ClienteOption[] }) {
         {isPending ? "Creando..." : "Crear usuario"}
       </button>
     </form>
+  );
+}
+
+function CentroAsignadoCell({ user }: { user: UsuarioRow }) {
+  const router = useRouter();
+  const [isPending, setIsPending] = useState(false);
+
+  async function handleChange(event: ChangeEvent<HTMLSelectElement>) {
+    const value = event.target.value;
+    setIsPending(true);
+    try {
+      await fetch(`/api/usuarios/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ centroAsignado: value }),
+      });
+      router.refresh();
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  return (
+    <select
+      defaultValue={user.centroAsignado ?? ""}
+      onChange={handleChange}
+      disabled={isPending}
+      className="rounded border border-gray-300 px-2 py-1 text-xs disabled:opacity-50"
+    >
+      <option value="">Sin asignar</option>
+      {Object.entries(CENTRO_ASIGNADO_LABELS).map(([value, label]) => (
+        <option key={value} value={value}>
+          {label}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -243,6 +290,7 @@ export function UsuariosClient({
               <th className="px-4 py-2">Email</th>
               <th className="px-4 py-2">Rol</th>
               <th className="px-4 py-2">Estado</th>
+              <th className="px-4 py-2">Centro asignado</th>
               <th className="px-4 py-2">Clientes</th>
               <th className="px-4 py-2">Acciones</th>
             </tr>
@@ -259,6 +307,9 @@ export function UsuariosClient({
                   ) : (
                     <span className="text-gray-400">Inactivo</span>
                   )}
+                </td>
+                <td className="px-4 py-2">
+                  <CentroAsignadoCell user={u} />
                 </td>
                 <td className="px-4 py-2 text-xs text-gray-600">
                   {u.role === "ADMIN" || u.role === "MARKETING"
