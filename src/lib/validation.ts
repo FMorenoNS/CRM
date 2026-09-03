@@ -1,17 +1,49 @@
 import { z } from "zod";
 
+/**
+ * Reglas de validación de todo lo que entra al CRM desde fuera.
+ *
+ * Además de comprobar el formato, TODOS los campos de texto llevan un tope
+ * de longitud. Sin ese tope, cualquiera podría guardar megas de texto en el
+ * campo "notas" y llenar la base de datos, o hacer lento el CRM para todos.
+ */
+
+// Topes por tipo de campo (en caracteres).
+const CORTO = 120; // nombres, ciudades, cargos, teléfonos...
+const MEDIO = 400; // resúmenes, títulos de programa
+const LARGO = 5000; // notas y textos libres
+const URL_MAX = 2000;
+const EMAIL_MAX = 320;
+
+const textoCorto = (max = CORTO) =>
+  z.string().trim().max(max, `Este campo no puede pasar de ${max} caracteres.`);
+const emailOpcional = (mensaje = "Email inválido.") =>
+  z.string().trim().max(EMAIL_MAX).email(mensaje).optional().nullable().or(z.literal(""));
+const urlOpcional = (mensaje: string) =>
+  z.string().trim().max(URL_MAX).url(mensaje).optional().nullable().or(z.literal(""));
+// Números que llegan como texto desde los formularios: se acotan para que no
+// entre un valor absurdo (ni un texto larguísimo disfrazado de número).
+const numeroOpcional = z
+  .union([z.number().finite(), z.string().max(20)])
+  .optional()
+  .nullable();
+// Fechas en formato de texto (YYYY-MM-DD o ISO).
+const fechaOpcional = z.string().trim().max(40).optional().nullable();
+
 export const loginSchema = z.object({
-  email: z.string().trim().email("Email inválido."),
-  password: z.string().min(1, "La contraseña es obligatoria."),
+  email: z.string().trim().max(EMAIL_MAX, "Email demasiado largo.").email("Email inválido."),
+  // El tope de 200 evita que alguien envíe una "contraseña" de megas para
+  // hacer trabajar al servidor calculando hashes enormes.
+  password: z.string().min(1, "La contraseña es obligatoria.").max(200),
 });
 
 export const centroSchema = z.object({
-  nombre: z.string().trim().optional().default(""),
+  nombre: textoCorto(200).optional().default(""),
   tipo: z.enum(["CENTRO", "PERSONA"]).optional().default("CENTRO"),
-  pais: z.string().trim().optional().default(""),
-  ciudad: z.string().trim().optional().nullable().or(z.literal("")),
-  canalOrigen: z.string().trim().min(1).default("Facebook"),
-  notas: z.string().trim().optional().nullable(),
+  pais: textoCorto().optional().default(""),
+  ciudad: textoCorto().optional().nullable().or(z.literal("")),
+  canalOrigen: textoCorto().min(1).default("Facebook"),
+  notas: z.string().trim().max(LARGO, "El texto es demasiado largo (máx. 5.000 caracteres).").optional().nullable(),
 });
 
 // Creación: además del centro, permite un contacto principal opcional, la
@@ -19,48 +51,30 @@ export const centroSchema = z.object({
 // `force` para crear aunque se detecte un posible duplicado. Ningún campo
 // es obligatorio.
 export const createCentroSchema = centroSchema.extend({
-  contactoNombre: z.string().trim().optional().nullable(),
-  contactoCargo: z.string().trim().optional().nullable(),
-  contactoEmail: z
-    .string()
-    .trim()
-    .email("Email de contacto inválido.")
-    .optional()
-    .nullable()
-    .or(z.literal("")),
-  contactoTelefono: z.string().trim().optional().nullable(),
-  tipoPrograma: z.string().trim().optional().nullable().or(z.literal("")),
+  contactoNombre: textoCorto().optional().nullable(),
+  contactoCargo: textoCorto().optional().nullable(),
+  contactoEmail: emailOpcional("Email de contacto inválido."),
+  contactoTelefono: textoCorto(40).optional().nullable(),
+  tipoPrograma: textoCorto(MEDIO).optional().nullable().or(z.literal("")),
   tipoProyecto: z.enum(["ERASMUS", "PRIVADO"]).optional().nullable().or(z.literal("")),
   tipoParticipante: z.enum(["ALUMNOS", "PROFESORES"]).optional(),
-  centroReceptor: z.string().trim().optional().nullable().or(z.literal("")),
-  provincia: z.string().trim().optional().nullable(),
-  numeroAlumnos: z.union([z.number(), z.string()]).optional().nullable(),
-  edadGrupo: z.string().trim().optional().nullable(),
-  fechaInicio: z.string().trim().optional().nullable(),
-  fechaFin: z.string().trim().optional().nullable(),
-  presupuestoImporte: z.union([z.number(), z.string()]).optional().nullable(),
-  estanciaNotas: z.string().trim().optional().nullable(),
-  grupoUrl: z
-    .string()
-    .trim()
-    .url("La URL del grupo no es válida.")
-    .optional()
-    .nullable()
-    .or(z.literal("")),
+  centroReceptor: textoCorto().optional().nullable().or(z.literal("")),
+  provincia: textoCorto().optional().nullable(),
+  numeroAlumnos: numeroOpcional,
+  edadGrupo: textoCorto(60).optional().nullable(),
+  fechaInicio: fechaOpcional,
+  fechaFin: fechaOpcional,
+  presupuestoImporte: numeroOpcional,
+  estanciaNotas: z.string().trim().max(LARGO, "El texto es demasiado largo (máx. 5.000 caracteres).").optional().nullable(),
+  grupoUrl: urlOpcional("La URL del grupo no es válida."),
   force: z.boolean().optional(),
 });
 
 export const contactoSchema = z.object({
-  nombre: z.string().trim().min(1, "El nombre del contacto es obligatorio."),
-  telefono: z.string().trim().optional().nullable(),
-  email: z
-    .string()
-    .trim()
-    .email("Email inválido.")
-    .optional()
-    .nullable()
-    .or(z.literal("")),
-  cargo: z.string().trim().optional().nullable(),
+  nombre: textoCorto().min(1, "El nombre del contacto es obligatorio."),
+  telefono: textoCorto(40).optional().nullable(),
+  email: emailOpcional(),
+  cargo: textoCorto().optional().nullable(),
 });
 
 const ESTADOS = [
@@ -80,22 +94,24 @@ const ESTADOS = [
 // porque el centro de una estancia ya existente no se puede cambiar (viene
 // fijado por la URL).
 const estanciaBaseSchema = z.object({
-  tipoPrograma: z.string().trim().min(1, "El tipo de programa es obligatorio."),
+  tipoPrograma: textoCorto(MEDIO).min(1, "El tipo de programa es obligatorio."),
   tipoProyecto: z.enum(["ERASMUS", "PRIVADO"]).optional().nullable().or(z.literal("")),
   tipoParticipante: z.enum(["ALUMNOS", "PROFESORES"]),
-  centroReceptor: z.string().trim().min(1).default("Granada"),
-  provincia: z.string().trim().optional().nullable(),
-  numeroAlumnos: z.union([z.number(), z.string()]).optional().nullable(),
-  edadGrupo: z.string().trim().optional().nullable(),
-  fechaInicio: z.string().trim().optional().nullable(),
-  fechaFin: z.string().trim().optional().nullable(),
+  centroReceptor: textoCorto().min(1).default("Granada"),
+  provincia: textoCorto().optional().nullable(),
+  numeroAlumnos: numeroOpcional,
+  edadGrupo: textoCorto(60).optional().nullable(),
+  fechaInicio: fechaOpcional,
+  fechaFin: fechaOpcional,
   estado: z.enum(ESTADOS).optional(),
-  presupuestoImporte: z.union([z.number(), z.string()]).optional().nullable(),
-  notas: z.string().trim().optional().nullable(),
+  presupuestoImporte: numeroOpcional,
+  notas: z.string().trim().max(LARGO, "El texto es demasiado largo (máx. 5.000 caracteres).").optional().nullable(),
 });
 
 export const estanciaSchema = estanciaBaseSchema.extend({
-  centroId: z.string().min(1, "El centro es obligatorio."),
+  // Los identificadores del CRM son cuid: siempre cortos. Acotarlos evita
+  // que se use este campo como vía para colar textos enormes.
+  centroId: z.string().trim().min(1, "El centro es obligatorio.").max(64),
 });
 
 export const updateEstanciaSchema = estanciaBaseSchema;
@@ -106,40 +122,44 @@ export const estadoSchema = z.object({
 
 export const interaccionSchema = z.object({
   tipo: z.enum(["LLAMADA", "EMAIL", "WHATSAPP", "NOTA"]),
-  resumen: z.string().trim().min(1, "El resumen es obligatorio."),
-  fecha: z.string().trim().optional().nullable(),
+  resumen: z.string().trim().min(1, "El resumen es obligatorio.").max(LARGO),
+  fecha: fechaOpcional,
 });
+
+/**
+ * La captura de pantalla de la captación llega incrustada como "data URL".
+ * Se comprueba que sea realmente una imagen: si se aceptase cualquier
+ * `data:`, alguien podría guardar ahí un `data:text/html` con código dentro
+ * y convertir la captura en una trampa para quien la abriera.
+ */
+const CAPTURA_MAX_CARACTERES = 5_000_000; // ~3,5 MB de imagen real
+const capturaImagen = z
+  .string()
+  .max(CAPTURA_MAX_CARACTERES, "La captura es demasiado grande (máx. ~3,5 MB).")
+  .refine(
+    (v) => v === "" || /^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=\s]+$/.test(v),
+    "La captura debe ser una imagen (PNG, JPEG, WEBP o GIF)."
+  );
 
 // Captación desde Facebook: primera interacción de una estancia.
 export const captacionSchema = z.object({
-  grupoUrl: z
-    .string()
-    .trim()
-    .url("La URL del grupo no es válida.")
-    .optional()
-    .or(z.literal("")),
-  perfilUrl: z
-    .string()
-    .trim()
-    .url("La URL del perfil no es válida.")
-    .optional()
-    .or(z.literal("")),
-  mensajeContacto: z.string().trim().optional().nullable(),
-  // Captura como data URL (data:image/...;base64,....). Se limita el tamaño.
-  capturaBase64: z
-    .string()
-    .max(5_000_000, "La captura es demasiado grande (máx. ~3,5 MB).")
-    .optional()
-    .nullable()
-    .or(z.literal("")),
+  grupoUrl: urlOpcional("La URL del grupo no es válida."),
+  perfilUrl: urlOpcional("La URL del perfil no es válida."),
+  mensajeContacto: z.string().trim().max(LARGO, "El texto es demasiado largo (máx. 5.000 caracteres).").optional().nullable(),
+  capturaBase64: capturaImagen.optional().nullable().or(z.literal("")),
 });
 
 export const userSchema = z.object({
-  nombre: z.string().trim().min(1, "El nombre es obligatorio."),
-  email: z.string().trim().email("Email inválido."),
-  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
+  nombre: textoCorto().min(1, "El nombre es obligatorio."),
+  email: z.string().trim().max(EMAIL_MAX).email("Email inválido."),
+  // El mínimo real y las reglas de fortaleza se comprueban en el servidor
+  // con validarFortaleza() (src/lib/passwords.ts).
+  password: z
+    .string()
+    .min(10, "La contraseña debe tener al menos 10 caracteres.")
+    .max(200),
   role: z.enum(["ADMIN", "MARKETING", "DIRECCION"]),
-  centroIds: z.array(z.string()).optional(),
+  centroIds: z.array(z.string().max(64)).max(500).optional(),
   centroAsignado: z
     .enum(["OPENWORLD", "MEDINA_ELVIRA"])
     .optional()
