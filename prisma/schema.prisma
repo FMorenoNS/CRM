@@ -81,6 +81,11 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // Cuando un administrador asigna una contraseña temporal, se marca a true:
+  // el usuario está obligado a elegir una nueva antes de poder usar el CRM.
+  debeCambiarPassword Boolean   @default(false)
+  passwordUpdatedAt   DateTime?
+
   interacciones      Interaccion[]
   documentosEnviados DocumentoEnviado[]
   registrosHistorial AuditLog[]
@@ -91,6 +96,40 @@ model User {
   // Centro propio de Novaschool al que pertenece (solo informativo).
   centroAsignado     CentroNovaschool?
   apiKeys            ApiKey[]
+  sessions           Session[]
+}
+
+// Sesiones abiertas. El navegador guarda un token aleatorio y opaco (no
+// contiene ningún dato dentro); aquí solo se guarda su huella SHA-256. Así
+// una sesión se puede anular en cualquier momento borrando su fila, y una
+// fuga de la base de datos no permite fabricar sesiones válidas.
+model Session {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+  ip         String?
+  userAgent  String?
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// Intentos de inicio de sesión, para frenar la fuerza bruta y para poder
+// investigar accesos sospechosos. Se purgan automáticamente.
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  email     String
+  ip        String
+  exito     Boolean
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([ip, createdAt])
+  @@index([createdAt])
 }
 
 // Claves de API para integraciones externas (p. ej. el bot de captación de
@@ -210,14 +249,22 @@ model DocumentoEnviado {
 // cuándo, sobre el centro o cualquiera de sus contactos/estancias/
 // interacciones/documentos asociados.
 model AuditLog {
-  id        String   @id @default(cuid())
-  centroId  String
-  centro    Centro   @relation(fields: [centroId], references: [id], onDelete: Cascade)
-  actorId   String
-  actor     User     @relation(fields: [actorId], references: [id])
-  accion    String
-  detalle   String?
-  createdAt DateTime @default(now())
+  id       String  @id @default(cuid())
+  // Opcional: los eventos de sistema (inicios de sesión, alta de usuarios,
+  // exportaciones) no cuelgan de ningún cliente concreto.
+  centroId String?
+  centro   Centro? @relation(fields: [centroId], references: [id], onDelete: Cascade)
+  // Opcional: un intento de acceso fallido con un email desconocido no
+  // corresponde a ningún usuario existente; se guarda actorEmail en su lugar.
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  actorEmail String?
+  accion     String
+  detalle    String?
+  ip         String?
+  createdAt  DateTime @default(now())
 
   @@index([centroId, createdAt])
+  @@index([createdAt])
+  @@index([actorId, createdAt])
 }
