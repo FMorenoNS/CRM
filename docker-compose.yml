@@ -1,10 +1,23 @@
+# ---------------------------------------------------------------------------
+# Despliegue del CRM: la aplicación + su base de datos PostgreSQL.
+#
+# Los valores van en un fichero `.env` junto a este (NO se sube al
+# repositorio). Ver `.env.example`.
+#
+# IMPORTANTE: la aplicación NO debe quedar expuesta directamente a Internet.
+# Va detrás de un proxy inverso con HTTPS (nginx, Traefik, IIS...), porque la
+# cookie de sesión solo viaja por HTTPS. Por eso el puerto se publica solo en
+# 127.0.0.1: accesible para el proxy del mismo servidor, no desde la red.
+# ---------------------------------------------------------------------------
 services:
   db:
     image: postgres:17
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-crm}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cambia-esta-clave}
+      # Obligatoria: si no está definida, `docker compose up` falla con este
+      # mensaje en lugar de arrancar con una clave por defecto conocida.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD en el fichero .env}
       POSTGRES_DB: ${POSTGRES_DB:-crm_erasmus}
     volumes:
       - db_data:/var/lib/postgresql/data
@@ -13,6 +26,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    # La base de datos no publica ningún puerto: solo se habla con ella desde
+    # la red interna de Docker. Para administrarla, usar `docker compose exec`.
 
   app:
     build: .
@@ -21,14 +36,25 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD:-cambia-esta-clave}@db:5432/${POSTGRES_DB:-crm_erasmus}?schema=public
-      AUTH_SECRET: ${AUTH_SECRET}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-crm_erasmus}?schema=public
+      # Dirección pública del CRM (con https:// y sin barra final). Se usa
+      # para la protección anti-CSRF.
+      APP_ORIGIN: ${APP_ORIGIN:-}
+      # Microsoft 365 para el envío de presupuestos y contratos. Vacío hasta
+      # que se registre la aplicación en Azure AD.
       AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-}
       AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET:-}
       AZURE_TENANT_ID: ${AZURE_TENANT_ID:-}
       AZURE_SENDER_EMAIL: ${AZURE_SENDER_EMAIL:-}
+      # Solo se usan al crear el administrador inicial, una única vez.
+      # Bórralas del .env en cuanto la cuenta esté creada.
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
     ports:
-      - "3000:3000"
+      # Solo escucha en el propio servidor. Si por algún motivo hiciera falta
+      # exponerlo en la red, define APP_BIND_ADDRESS=0.0.0.0 en el .env, pero
+      # entonces el CRM queda accesible por HTTP sin cifrar: no lo hagas.
+      - "${APP_BIND_ADDRESS:-127.0.0.1}:3000:3000"
 
 volumes:
   db_data:

@@ -43,3 +43,9 @@ next-env.d.ts
 
 # configuración local de Claude Code (específica de cada máquina)
 .claude/
+
+# copias de seguridad de la base de datos: contienen datos personales y
+# jamás deben acabar en el repositorio
+/backups
+*.dump
+*.sql.gz
