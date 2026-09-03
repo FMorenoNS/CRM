@@ -19,8 +19,41 @@ const textoCorto = (max = CORTO) =>
   z.string().trim().max(max, `Este campo no puede pasar de ${max} caracteres.`);
 const emailOpcional = (mensaje = "Email inválido.") =>
   z.string().trim().max(EMAIL_MAX).email(mensaje).optional().nullable().or(z.literal(""));
+/**
+ * Solo se aceptan direcciones http y https.
+ *
+ * El validador de URL de Zod es más permisivo de lo que parece: comprobado
+ * con la versión 4.4.3 de este proyecto, da por buenos "javascript:...",
+ * "data:text/html,...", "file:///..." y "vbscript:...". Esos valores se
+ * guardan en grupoUrl y perfilUrl de la captación y se pintan como enlaces.
+ *
+ * Hoy no llegan a ejecutarse porque React y el navegador los bloquean, pero
+ * esa defensa está fuera del CRM y no cubre todos los caminos: en la
+ * descarga de datos RGPD el valor sale tal cual, y quien abra ese fichero y
+ * pinche el enlace ya no tiene a React de por medio. Así que se filtra al
+ * entrar, que es donde toca.
+ *
+ * La comprobación se hace a mano y no con opciones del validador de Zod a
+ * propósito: así no depende de que su comportamiento cambie al actualizar.
+ */
+const ESQUEMAS_PERMITIDOS = new Set(["http:", "https:"]);
+
 const urlOpcional = (mensaje: string) =>
-  z.string().trim().max(URL_MAX).url(mensaje).optional().nullable().or(z.literal(""));
+  z
+    .string()
+    .trim()
+    .max(URL_MAX)
+    .url(mensaje)
+    .refine((valor) => {
+      try {
+        return ESQUEMAS_PERMITIDOS.has(new URL(valor).protocol);
+      } catch {
+        return false;
+      }
+    }, "La dirección debe empezar por http:// o https://")
+    .optional()
+    .nullable()
+    .or(z.literal(""));
 // Números que llegan como texto desde los formularios: se acotan para que no
 // entre un valor absurdo (ni un texto larguísimo disfrazado de número).
 const numeroOpcional = z
