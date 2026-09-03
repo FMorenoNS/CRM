@@ -2,12 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { PIPELINE_ESTADOS } from "@/lib/labels";
-
-type Contacto =
-  | { nombre: string; telefono: string | null; email: string | null }
-  | undefined;
+import type { Contacto } from "@/lib/tareas";
 
 function contactoLinea(contacto: Contacto) {
   if (!contacto) return "Sin contacto registrado";
@@ -27,6 +24,55 @@ const TONE_TEXT = {
   rose: "text-rose-700",
   slate: "text-slate-600",
 };
+
+// Tarjeta estática de una alerta (abandono / envío fallido): informativa,
+// sin acción de completar (no tiene sentido avanzar la pipeline desde aquí).
+export function StaticTaskCard({
+  href,
+  centroNombre,
+  contacto,
+  detalle,
+  tone,
+}: {
+  href: string;
+  centroNombre: string;
+  contacto: Contacto;
+  detalle: string;
+  tone: "amber" | "rose" | "slate";
+}) {
+  return (
+    <Link
+      href={href}
+      className={`block rounded border bg-white px-3 py-2 text-sm ${TONE_BORDER[tone]}`}
+    >
+      <span className="font-medium text-gray-900">{centroNombre}</span>
+      <span className="block text-gray-600">{contactoLinea(contacto)}</span>
+      <span className={`text-xs ${TONE_TEXT[tone]}`}>{detalle}</span>
+    </Link>
+  );
+}
+
+export function TaskGroup({
+  title,
+  items,
+}: {
+  title: string;
+  items: { key: string; node: ReactNode }[];
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <h3 className="text-sm font-medium text-gray-900">
+        {title} ({items.length})
+      </h3>
+      <ul className="mt-2 flex flex-col gap-2">
+        {items.map((i) => (
+          <li key={i.key}>{i.node}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 // Tarjeta interactiva de una tarea del día: al pulsar el botón redondo se
 // marca como completada y la estancia avanza a la siguiente fase de la
