@@ -10,6 +10,7 @@ import {
 } from "@/lib/passwords";
 import {
   comprobarLimiteLogin,
+  comprobarLimiteMemoria,
   limpiarIntentosLogin,
   purgarIntentosAntiguos,
   registrarIntentoLogin,
@@ -41,6 +42,30 @@ async function handlerPOST(request: Request) {
   if (csrf) return csrf;
 
   const ip = getClientIp(request);
+
+  // Tope de peticiones por IP, antes de tocar la base de datos.
+  //
+  // El login es la única ruta que no pasa por requireApiUser, que es donde
+  // vive el tope general, así que se le pone aquí el suyo. Y hace falta por
+  // un motivo concreto: cada intento con un email desconocido dispara a
+  // propósito un cálculo de argon2id de 19 MiB (el hash señuelo que iguala
+  // los tiempos de respuesta). Eso está bien y es lo que cierra la fuga de
+  // quién está registrado, pero convierte cada petición sin autenticar en
+  // trabajo caro para el servidor. Sin este tope, quien quisiera tumbar el
+  // CRM solo tendría que pedir el login en bucle.
+  //
+  // 30 por minuto es holgadísimo para una persona escribiendo su contraseña
+  // y a la vez corta en seco cualquier automatismo.
+  const limiteIp = comprobarLimiteMemoria(`login:${ip}`, 30, 60);
+  if (limiteIp.bloqueado) {
+    return NextResponse.json(
+      { error: "Demasiadas peticiones. Espera unos segundos." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(limiteIp.segundosEspera) },
+      }
+    );
+  }
 
   const body = await readJsonBody(request, 8 * 1024);
   if (body === DEMASIADO_GRANDE) {
