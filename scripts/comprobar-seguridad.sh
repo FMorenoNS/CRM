@@ -13,6 +13,16 @@
 # Uso (una sola línea):
 #   BASE=http://localhost:3100 TEST_EMAIL=admin@novaschool.es TEST_PASSWORD='...' sh scripts/comprobar-seguridad.sh
 #
+# El bloque 12 (frontera de visibilidad de Dirección) necesita además una
+# cuenta con rol DIRECCION y los datos de un cliente que NO tenga asignado.
+# Si no se pasan, ese bloque se salta avisando:
+#
+#   TEST_DIR_EMAIL=direccion.prueba@novaschool.es
+#   TEST_DIR_PASSWORD='...'
+#   TEST_AJENO_CENTRO=<id de un cliente que esa cuenta no gestiona>
+#   TEST_AJENA_ESTANCIA=<id de una estancia de ese cliente>
+#   TEST_AJENO_NOMBRE=<nombre exacto de ese cliente>
+#
 # ATENCIÓN: la prueba final cierra TODAS las sesiones de ese usuario, y la
 # prueba de login deja intentos fallidos registrados a su nombre. Úsalo con
 # una cuenta de prueba, no con la tuya del día a día.
@@ -145,6 +155,111 @@ fi
 echo "== 11. Cerrar todas las sesiones =="
 codigo -b $CK -X POST $B/api/auth/logout-all -H "Origin: $B" >/dev/null
 comprobar "la cookie deja de valer" "307" "$(codigo -b $CK $B/)"
+
+echo "== 12. Frontera de visibilidad de Direccion =="
+if [ -z "${TEST_DIR_EMAIL:-}" ] || [ -z "${TEST_DIR_PASSWORD:-}" ] || [ -z "${TEST_AJENO_CENTRO:-}" ]; then
+  echo "  --    saltado: faltan TEST_DIR_* (ver la cabecera de este script)"
+else
+  CKD=/tmp/cs-direccion.txt
+  rm -f $CKD
+  codigo -c $CKD -X POST $B/api/auth/login -H 'Content-Type: application/json' -H "Origin: $B" \
+    -d "{\"email\":\"$TEST_DIR_EMAIL\",\"password\":\"$TEST_DIR_PASSWORD\"}" >/dev/null
+
+  if [ "$(codigo -b $CKD $B/)" != "200" ]; then
+    echo "  FALLO no he podido entrar con la cuenta de Direccion de prueba"
+    fallo=$((fallo+1))
+  else
+    # Un cliente ajeno tiene que responder igual que uno inventado: si uno
+    # diera 403 y el otro 404, se podria enumerar la cartera de los demas
+    # probando identificadores.
+    INVENTADO="cxxxxxxxxxxxxxxxxxxxxxxxx"
+    A=$(curl -s -o /tmp/cs-a.txt -w '%{http_code}' -b $CKD -X PATCH "$B/api/centros/$TEST_AJENO_CENTRO" \
+      -H 'Content-Type: application/json' -H "Origin: $B" -d '{"nombre":"x","pais":"y","canalOrigen":"Facebook"}')
+    A="$A|$(cat /tmp/cs-a.txt)"
+    I=$(curl -s -o /tmp/cs-i.txt -w '%{http_code}' -b $CKD -X PATCH "$B/api/centros/$INVENTADO" \
+      -H 'Content-Type: application/json' -H "Origin: $B" -d '{"nombre":"x","pais":"y","canalOrigen":"Facebook"}')
+    I="$I|$(cat /tmp/cs-i.txt)"
+    if [ "$A" = "$I" ]; then
+      echo "  OK    cliente ajeno indistinguible de uno inexistente ($A)"
+      ok=$((ok+1))
+    else
+      echo "  FALLO cliente ajeno: $A | inexistente: $I"
+      fallo=$((fallo+1))
+    fi
+
+    comprobar "descarga RGPD de un cliente ajeno" "404" "$(codigo -b $CKD "$B/api/centros/$TEST_AJENO_CENTRO/datos")"
+
+    if [ -n "${TEST_AJENA_ESTANCIA:-}" ]; then
+      A=$(curl -s -o /tmp/cs-a.txt -w '%{http_code}' -b $CKD -X PATCH "$B/api/estancias/$TEST_AJENA_ESTANCIA/estado" \
+        -H 'Content-Type: application/json' -H "Origin: $B" -d '{"estado":"CONTACTADO"}')
+      A="$A|$(cat /tmp/cs-a.txt)"
+      I=$(curl -s -o /tmp/cs-i.txt -w '%{http_code}' -b $CKD -X PATCH "$B/api/estancias/$INVENTADO/estado" \
+        -H 'Content-Type: application/json' -H "Origin: $B" -d '{"estado":"CONTACTADO"}')
+      I="$I|$(cat /tmp/cs-i.txt)"
+      if [ "$A" = "$I" ]; then
+        echo "  OK    estancia ajena indistinguible de una inexistente ($A)"
+        ok=$((ok+1))
+      else
+        echo "  FALLO estancia ajena: $A | inexistente: $I"
+        fallo=$((fallo+1))
+      fi
+    fi
+
+    # El alta de clientes busca duplicados en TODA la base, asi que no puede
+    # devolver la ficha de uno que esta cuenta no gestiona.
+    if [ -n "${TEST_AJENO_NOMBRE:-}" ]; then
+      DUP=$(curl -s -b $CKD -X POST $B/api/centros -H 'Content-Type: application/json' -H "Origin: $B" \
+        -d "{\"nombre\":\"$TEST_AJENO_NOMBRE\",\"pais\":\"Italia\"}")
+      if printf '%s' "$DUP" | grep -q '"duplicados":\[\]'; then
+        echo "  OK    duplicados no revela la ficha del cliente ajeno"
+        ok=$((ok+1))
+      else
+        echo "  FALLO duplicados filtra datos del cliente ajeno: $DUP"
+        fallo=$((fallo+1))
+      fi
+
+      # La exportacion a Excel es la via mas facil de sacar datos en bloque:
+      # tiene que respetar la misma frontera. Se abre el fichero de verdad,
+      # porque un xlsx va comprimido y buscar el texto a pelo no sirve.
+      # La ruta se pide a Node en lugar de escribirla a mano: en Git Bash
+      # sobre Windows, /tmp no significa lo mismo para el shell que para
+      # Node, y el fichero se escribiria en un sitio y se leeria en otro.
+      EXPORTADO=$(node -e "console.log(require('os').tmpdir()+'/cs-export.xlsx')")
+      curl -s -b $CKD -o "$EXPORTADO" "$B/api/export"
+      FUGA=$(node -e "
+const ExcelJS=require('exceljs');
+(async()=>{
+  const wb=new ExcelJS.Workbook();
+  await wb.xlsx.readFile(process.argv[2]);
+  const nombres=[];
+  for (const hoja of wb.worksheets) {
+    hoja.eachRow((fila,n)=>{ if(n>1) nombres.push(String(fila.getCell(1).value ?? '')); });
+  }
+  console.log(nombres.includes(process.argv[1]) ? 'SI' : 'NO');
+})().catch(()=>console.log('ERROR'));
+" "$TEST_AJENO_NOMBRE" "$EXPORTADO" 2>/dev/null)
+      case "$FUGA" in
+        NO) echo "  OK    la exportacion a Excel no incluye el cliente ajeno"; ok=$((ok+1)) ;;
+        SI) echo "  FALLO la exportacion a Excel incluye el cliente ajeno"; fallo=$((fallo+1)) ;;
+        *)  echo "  --    no he podido leer el Excel exportado (falta exceljs o node)" ;;
+      esac
+      rm -f "$EXPORTADO"
+    fi
+  fi
+fi
+
+echo "== 13. Bloqueo por intentos fallidos =="
+# Va al final a proposito: deja intentos registrados y bloquea ese email 15
+# minutos. Se usa un email que no existe, para no dejar fuera a nadie real.
+EMAIL_BLOQUEO="bloqueo-prueba@ejemplo-invalido.test"
+ULTIMO=""
+i=1
+while [ $i -le 9 ]; do
+  ULTIMO=$(codigo -X POST $B/api/auth/login -H 'Content-Type: application/json' -H "Origin: $B" \
+    -d "{\"email\":\"$EMAIL_BLOQUEO\",\"password\":\"contrasena-equivocada-$i\"}")
+  i=$((i+1))
+done
+comprobar "al noveno intento fallido responde 429" "429" "$ULTIMO"
 
 echo ""
 echo "RESULTADO: $ok correctas, $fallo fallidas"
