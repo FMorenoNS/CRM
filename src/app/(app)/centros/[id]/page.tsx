@@ -99,7 +99,19 @@ export default async function CentroDetailPage({
             {[centro.ciudad, centro.pais].filter(Boolean).join(", ")}
           </p>
         </div>
-        {puedeEditar && <DeleteCentroButton centroId={centro.id} />}
+        <div className="flex items-center gap-4">
+          {/* Derecho de acceso (RGPD): descarga en un fichero todo lo que el
+              CRM guarda sobre este cliente y sus contactos, por si alguno lo
+              solicita. Queda registrado quién lo descarga. */}
+          <a
+            href={`/api/centros/${centro.id}/datos`}
+            className="text-sm text-gray-500 underline hover:text-brand-navy"
+            title="Descarga todos los datos guardados de este cliente (para atender una solicitud RGPD)"
+          >
+            Descargar sus datos (RGPD)
+          </a>
+          {puedeEditar && <DeleteCentroButton centroId={centro.id} />}
+        </div>
       </div>
 
       <div className="grid gap-10 md:grid-cols-2">
@@ -195,7 +207,8 @@ export default async function CentroDetailPage({
               <p className="text-gray-900">
                 <span className="font-medium">{h.accion}</span>{" "}
                 <span className="text-gray-400">
-                  · {formatFechaHora(h.createdAt)} · {h.actor.nombre}
+                  · {formatFechaHora(h.createdAt)} ·{" "}
+                  {h.actor?.nombre ?? h.actorEmail ?? "usuario eliminado"}
                 </span>
               </p>
               {h.detalle && <p className="text-gray-600">{h.detalle}</p>}
