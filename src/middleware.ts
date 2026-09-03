@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const COOKIE_NAME = "session";
+// Debe coincidir con el nombre que usa src/lib/session.ts. En producción lleva
+// el prefijo __Host-, que impide que otro subdominio de novaschool.es pueda
+// fijar una cookie de sesión para el CRM (ver el comentario en session.ts).
+const COOKIE_NAME =
+  process.env.NODE_ENV === "production" ? "__Host-session" : "session";
 const PUBLIC_ROUTES = ["/login"];
 
 /**

@@ -41,16 +41,44 @@ export async function readJsonBody(
   request: Request,
   maxBytes = 256 * 1024 // 256 KB por defecto
 ): Promise<unknown | null | typeof DEMASIADO_GRANDE> {
+  // Primer filtro, el barato: si la petición ya declara un tamaño excesivo,
+  // se rechaza sin leer ni un byte.
   const declared = request.headers.get("content-length");
   if (declared && Number(declared) > maxBytes) return DEMASIADO_GRANDE;
 
-  const text = await request.text().catch(() => null);
-  if (text === null) return null;
-  // Se mide en bytes reales, no en caracteres (un emoji ocupa 4 bytes).
-  if (Buffer.byteLength(text, "utf8") > maxBytes) return DEMASIADO_GRANDE;
+  if (!request.body) return null;
+
+  // Segundo filtro, el que de verdad protege: se lee a trozos y se corta en
+  // cuanto se pasa del tope.
+  //
+  // Es importante NO usar request.text() aquí. Una petición puede no declarar
+  // su tamaño (envío "chunked"), y en ese caso text() se traga el cuerpo
+  // entero en memoria ANTES de que se pueda medir: bastaría con enviar unos
+  // cientos de megas para tumbar el servidor, justo lo que este tope quiere
+  // evitar. Leyendo por trozos, el consumo nunca pasa del tope.
+  const lector = request.body.getReader();
+  const trozos: Uint8Array[] = [];
+  let total = 0;
 
   try {
-    return JSON.parse(text);
+    for (;;) {
+      const { done, value } = await lector.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        // Se corta la conexión: no se sigue leyendo lo que no vamos a usar.
+        await lector.cancel().catch(() => {});
+        return DEMASIADO_GRANDE;
+      }
+      trozos.push(value);
+    }
+  } catch {
+    return null;
+  }
+
+  try {
+    return JSON.parse(Buffer.concat(trozos).toString("utf8"));
   } catch {
     return null;
   }

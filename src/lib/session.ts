@@ -16,7 +16,26 @@ export type SessionUser = {
   debeCambiarPassword: boolean;
 };
 
-const COOKIE_NAME = "session";
+/**
+ * Nombre de la cookie de sesión.
+ *
+ * En producción lleva el prefijo `__Host-`. No es decorativo: es una
+ * instrucción al navegador que le obliga a tratar la cookie como propia de
+ * ESTE host exacto y solo por HTTPS, y a rechazarla si alguien intenta
+ * fijarla para todo el dominio.
+ *
+ * Importa porque Novaschool tiene más subdominios bajo novaschool.es. Sin el
+ * prefijo, cualquier otro subdominio (o alguien que lograra colarse en uno)
+ * podría escribir una cookie `session` para `.novaschool.es`, que el
+ * navegador enviaría también al CRM. Con eso se puede meter a una persona en
+ * la sesión de un atacante sin que lo note, y que acabe escribiendo datos de
+ * clientes en una cuenta ajena. El prefijo cierra esa vía.
+ *
+ * En desarrollo se usa el nombre corto, porque `__Host-` exige HTTPS y en
+ * local se trabaja por HTTP.
+ */
+const COOKIE_NAME =
+  process.env.NODE_ENV === "production" ? "__Host-session" : "session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 días
 // Cada cuánto se refresca "última vez visto" (para no escribir en la base de
 // datos en cada clic).

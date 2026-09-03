@@ -76,6 +76,25 @@ comprobar "panel accesible" "200" "$(codigo -b $CK $B/)"
 comprobar "export accesible" "200" "$(codigo -b $CK $B/api/export)"
 if grep -qi httponly $CK; then echo "  OK    cookie httpOnly"; ok=$((ok+1)); else echo "  FALLO cookie sin httpOnly"; fallo=$((fallo+1)); fi
 
+# El prefijo __Host- impide que otro subdominio del dominio corporativo pueda
+# fijar una cookie de sesión para el CRM (fijación de sesión). Solo se exige
+# contra un despliegue por HTTPS: en local, por HTTP, se usa el nombre corto.
+SETCOOKIE=$(curl -s -D - -o /dev/null -X POST $B/api/auth/login -H 'Content-Type: application/json' -H "Origin: $B" -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}" | grep -i '^set-cookie')
+case "$B" in
+  https://*)
+    if printf '%s' "$SETCOOKIE" | grep -q '__Host-session'; then
+      echo "  OK    cookie con prefijo __Host-"; ok=$((ok+1))
+    else
+      echo "  FALLO la cookie de sesión no lleva el prefijo __Host-"; fallo=$((fallo+1))
+    fi ;;
+  *) echo "  --    prefijo __Host- no aplica sobre HTTP (solo se comprueba con https://)" ;;
+esac
+if printf '%s' "$SETCOOKIE" | grep -qi 'domain='; then
+  echo "  FALLO la cookie fija un Domain: la compartiría con otros subdominios"; fallo=$((fallo+1))
+else
+  echo "  OK    cookie sin Domain (no se comparte con otros subdominios)"; ok=$((ok+1))
+fi
+
 echo "== 6. CSRF con sesion abierta =="
 comprobar "borrado desde otra web" "403" "$(codigo -b $CK -X DELETE $B/api/centros/cualquiera -H 'Origin: https://malo.example')"
 comprobar "alta desde otra web"    "403" "$(codigo -b $CK -X POST $B/api/usuarios -H 'Content-Type: application/json' -H 'Origin: https://malo.example' -d '{}')"
@@ -90,6 +109,15 @@ const {PrismaClient}=require("@prisma/client");
 new PrismaClient().estancia.findFirst({select:{id:true}}).then(e=>{console.log(e.id);process.exit(0)});
 ')
 comprobar "captura que no es imagen" "400" "$(codigo -b $CK -X PUT $B/api/estancias/$EST/captacion -H 'Content-Type: application/json' -H "Origin: $B" -d '{"capturaBase64":"data:text/html;base64,PHNjcmlwdD4x"}')"
+
+# Un cuerpo enorme que NO declara su tamaño (envío "chunked"). Es el caso que
+# se cuela si el tope se comprueba solo mirando la cabecera Content-Length:
+# el servidor se traga el cuerpo entero en memoria antes de poder medirlo.
+node -e "require('fs').writeFileSync('$TMPDIR/pr-chunked.json', JSON.stringify({nombre:'x'.repeat(5*1024*1024)}))" 2>/dev/null \
+  || node -e "require('fs').writeFileSync(require('os').tmpdir()+'/pr-chunked.json', JSON.stringify({nombre:'x'.repeat(5*1024*1024)}))"
+CHUNKED=$(node -e "console.log(require('os').tmpdir()+'/pr-chunked.json')")
+comprobar "cuerpo de 5 MB sin declarar tamaño" "413" "$(codigo -b $CK -X POST $B/api/centros -H 'Content-Type: application/json' -H "Origin: $B" -H 'Transfer-Encoding: chunked' --data-binary @"$CHUNKED")"
+rm -f "$CHUNKED"
 
 echo "== 8. Contrasenas debiles =="
 comprobar "menos de 10 caracteres" "400" "$(codigo -b $CK -X POST $B/api/auth/password -H 'Content-Type: application/json' -H "Origin: $B" -d "{\"actual\":\"$PASS\",\"nueva\":\"corta12\"}")"

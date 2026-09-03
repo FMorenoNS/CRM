@@ -92,6 +92,13 @@ type Contador = { hasta: number; usos: number };
 const contadores = new Map<string, Contador>();
 let ultimaLimpieza = Date.now();
 
+// Tope duro de claves distintas en memoria. La IP se lee de una cabecera que
+// el cliente puede falsear si el CRM quedara expuesto sin proxy delante, así
+// que alguien podría inventarse una IP nueva en cada petición y hacer crecer
+// este mapa hasta agotar la memoria. Con el tope, el propio mecanismo de
+// protección no se convierte en un problema.
+const MAX_CLAVES = 20_000;
+
 export function comprobarLimiteMemoria(
   clave: string,
   maxPeticiones: number,
@@ -103,6 +110,16 @@ export function comprobarLimiteMemoria(
   if (ahora - ultimaLimpieza > 60_000) {
     for (const [k, v] of contadores) if (v.hasta <= ahora) contadores.delete(k);
     ultimaLimpieza = ahora;
+  }
+
+  // Si aun así se ha llegado al tope, se descartan las entradas más antiguas
+  // (las primeras del mapa: JavaScript conserva el orden de inserción).
+  if (contadores.size >= MAX_CLAVES && !contadores.has(clave)) {
+    let porBorrar = Math.ceil(MAX_CLAVES / 10);
+    for (const k of contadores.keys()) {
+      contadores.delete(k);
+      if (--porBorrar <= 0) break;
+    }
   }
 
   const actual = contadores.get(clave);
