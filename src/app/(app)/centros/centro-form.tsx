@@ -146,6 +146,9 @@ export function CentroCreateForm() {
   const router = useRouter();
   const [error, setError] = useState<string>();
   const [duplicados, setDuplicados] = useState<Duplicado[] | null>(null);
+  // Coincidencias que existen pero pertenecen a clientes que esta persona no
+  // gestiona. Solo se sabe cuántas son, nunca cuáles.
+  const [ocultos, setOcultos] = useState(0);
   const [isPending, setIsPending] = useState(false);
 
   function readValues(form: HTMLFormElement, force: boolean) {
@@ -188,6 +191,7 @@ export function CentroCreateForm() {
       const data = await res.json().catch(() => ({}));
       if (res.status === 409 && data.error === "posible_duplicado") {
         setDuplicados(data.duplicados ?? []);
+        setOcultos(data.ocultos ?? 0);
         return;
       }
       if (!res.ok) {
@@ -313,10 +317,12 @@ export function CentroCreateForm() {
         </div>
       </fieldset>
 
-      {duplicados && duplicados.length > 0 && (
+      {duplicados && (duplicados.length > 0 || ocultos > 0) && (
         <div className="rounded border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
           <p className="font-medium">
-            Puede que este cliente ya exista. Coincidencias:
+            {duplicados.length > 0
+              ? "Puede que este cliente ya exista. Coincidencias:"
+              : "Este cliente ya existe, pero lo gestiona otra persona."}
           </p>
           <ul className="mt-2 flex flex-col gap-1">
             {duplicados.map((d) => (
@@ -333,6 +339,19 @@ export function CentroCreateForm() {
               </li>
             ))}
           </ul>
+
+          {ocultos > 0 && (
+            <p className="mt-2">
+              {duplicados.length > 0 ? "Además hay " : "Hay "}
+              <strong>
+                {ocultos} coincidencia{ocultos === 1 ? "" : "s"}
+              </strong>{" "}
+              en clientes que no gestionas, así que no podemos mostrarte los
+              datos. Pregunta a quien los lleve antes de crear uno nuevo: si lo
+              creas, quedarán dos fichas del mismo cliente.
+            </p>
+          )}
+
           <div className="mt-3 flex gap-2">
             <button
               type="button"
@@ -342,9 +361,11 @@ export function CentroCreateForm() {
             >
               Crear uno nuevo de todas formas
             </button>
-            <span className="self-center text-xs text-amber-700">
-              …o pulsa un cliente de la lista para ir al existente.
-            </span>
+            {duplicados.length > 0 && (
+              <span className="self-center text-xs text-amber-700">
+                …o pulsa un cliente de la lista para ir al existente.
+              </span>
+            )}
           </div>
         </div>
       )}

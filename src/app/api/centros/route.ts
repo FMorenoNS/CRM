@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { createCentroSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
+import { canAccessCentro } from "@/lib/permissions";
 import { DEMASIADO_GRANDE, readJsonBody } from "@/lib/request";
 import { withApi } from "@/lib/http";
 
@@ -31,8 +32,25 @@ async function handlerPOST(request: Request) {
 
   // Detección de duplicados por nombre del centro (sin distinguir mayúsculas)
   // o por email de contacto ya registrado.
+  //
+  // Aquí hay una tensión real entre dos cosas que las dos importan:
+  //
+  //  - La búsqueda tiene que recorrer TODA la base. Si solo mirara los
+  //    clientes que ve quien está dando el alta, alguien de Dirección
+  //    duplicaría sin enterarse un centro que gestiona otra persona, y el
+  //    duplicado es justo lo que este control existe para evitar.
+  //  - Pero la respuesta no puede devolver la ficha de un cliente que esa
+  //    persona no tiene derecho a ver. Antes devolvía nombre, país y ciudad
+  //    de cualquier coincidencia, así que el formulario de alta servía de
+  //    buscador de la cartera completa: se escribía un nombre y el CRM
+  //    contaba si existía y dónde.
+  //
+  // La salida: se busca en todo, pero solo se enseña la ficha de los que la
+  // persona ya podría ver por su cuenta. Del resto se devuelve únicamente
+  // cuántos hay, sin un solo dato, para que sepa que tiene que preguntar en
+  // vez de crear un duplicado.
   if (!d.force) {
-    const duplicados = await prisma.centro.findMany({
+    const coincidencias = await prisma.centro.findMany({
       where: {
         OR: [
           { nombre: { equals: d.nombre, mode: "insensitive" } },
@@ -42,12 +60,19 @@ async function handlerPOST(request: Request) {
         ],
       },
       select: { id: true, nombre: true, pais: true, ciudad: true },
-      take: 5,
+      take: 20,
     });
 
-    if (duplicados.length > 0) {
+    if (coincidencias.length > 0) {
+      const visibles = coincidencias.filter((c) => canAccessCentro(user, c.id));
+      const ocultos = coincidencias.length - visibles.length;
+
       return NextResponse.json(
-        { error: "posible_duplicado", duplicados },
+        {
+          error: "posible_duplicado",
+          duplicados: visibles.slice(0, 5),
+          ocultos,
+        },
         { status: 409 }
       );
     }
