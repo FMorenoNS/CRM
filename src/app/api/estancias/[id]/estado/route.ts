@@ -4,7 +4,7 @@ import { requireApiUser } from "@/lib/api-auth";
 import { estadoSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
 import { ESTADO_LABELS } from "@/lib/labels";
-import { canDoOperational, forbidden } from "@/lib/permissions";
+import { canAccessCentro, canDoOperational, forbidden, noEncontrado } from "@/lib/permissions";
 import { DEMASIADO_GRANDE, readJsonBody } from "@/lib/request";
 import { withApi } from "@/lib/http";
 
@@ -22,8 +22,11 @@ async function handlerPATCH(
     select: { centroId: true },
   });
   if (!existing) {
-    return NextResponse.json({ error: "No encontrada." }, { status: 404 });
+    return noEncontrado();
   }
+  // Si no puede ver ese cliente, se responde igual que si no existiera:
+  // un 403 aquí confirmaría que el registro existe (ver noEncontrado).
+  if (!canAccessCentro(user, existing.centroId)) return noEncontrado();
   if (!canDoOperational(user, existing.centroId)) return forbidden();
 
   const body = await readJsonBody(request);

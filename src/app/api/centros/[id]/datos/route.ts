@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
-import { canAccessCentro, forbidden } from "@/lib/permissions";
+import { canAccessCentro, noEncontrado } from "@/lib/permissions";
 import { registrarEventoSistema } from "@/lib/audit";
 import { getClientIp } from "@/lib/request";
 import { withApi } from "@/lib/http";
@@ -26,7 +26,8 @@ async function handlerGET(
   const user = auth;
   const { id } = await params;
 
-  if (!canAccessCentro(user, id)) return forbidden();
+  // Un 403 aquí confirmaría que el cliente existe: se responde como si no.
+  if (!canAccessCentro(user, id)) return noEncontrado();
 
   const centro = await prisma.centro.findUnique({
     where: { id },
@@ -76,7 +77,7 @@ async function handlerGET(
   });
 
   if (!centro) {
-    return NextResponse.json({ error: "No encontrado." }, { status: 404 });
+    return noEncontrado();
   }
 
   await registrarEventoSistema({

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { centroSchema } from "@/lib/validation";
 import { registrarEventoSistema, registrarHistorial } from "@/lib/audit";
-import { canEditMasterData, forbidden } from "@/lib/permissions";
+import { canAccessCentro, canEditMasterData, forbidden, noEncontrado } from "@/lib/permissions";
 import { DEMASIADO_GRANDE, getClientIp, readJsonBody } from "@/lib/request";
 import { withApi } from "@/lib/http";
 
@@ -16,6 +16,9 @@ async function handlerPATCH(
   const user = auth;
   const { id } = await params;
 
+  // Si no puede ver ese cliente, se responde igual que si no existiera:
+  // un 403 aquí confirmaría que el registro existe (ver noEncontrado).
+  if (!canAccessCentro(user, id)) return noEncontrado();
   if (!canEditMasterData(user, id)) return forbidden();
 
   const body = await readJsonBody(request);
@@ -40,7 +43,7 @@ async function handlerPATCH(
     select: { id: true },
   });
   if (!existe) {
-    return NextResponse.json({ error: "No encontrado." }, { status: 404 });
+    return noEncontrado();
   }
 
   await prisma.centro.update({
@@ -73,6 +76,9 @@ async function handlerDELETE(
   const user = auth;
   const { id } = await params;
 
+  // Si no puede ver ese cliente, se responde igual que si no existiera:
+  // un 403 aquí confirmaría que el registro existe (ver noEncontrado).
+  if (!canAccessCentro(user, id)) return noEncontrado();
   if (!canEditMasterData(user, id)) return forbidden();
 
   const centro = await prisma.centro.findUnique({
@@ -80,7 +86,7 @@ async function handlerDELETE(
     select: { nombre: true, pais: true },
   });
   if (!centro) {
-    return NextResponse.json({ error: "No encontrado." }, { status: 404 });
+    return noEncontrado();
   }
 
   await prisma.centro.delete({ where: { id } });

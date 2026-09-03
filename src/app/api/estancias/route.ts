@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { estanciaSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
-import { canDoOperational, forbidden } from "@/lib/permissions";
+import { canAccessCentro, canDoOperational, forbidden, noEncontrado } from "@/lib/permissions";
 import { DEMASIADO_GRANDE, readJsonBody } from "@/lib/request";
 import { withApi } from "@/lib/http";
 
@@ -28,6 +28,9 @@ async function handlerPOST(request: Request) {
   }
 
   const d = parsed.data;
+  // Si no puede ver ese cliente, se responde igual que si no existiera:
+  // un 403 aquí confirmaría que el registro existe (ver noEncontrado).
+  if (!canAccessCentro(user, d.centroId)) return noEncontrado();
   if (!canDoOperational(user, d.centroId)) return forbidden();
   const estancia = await prisma.estancia.create({
     data: {

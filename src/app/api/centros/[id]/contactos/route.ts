@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { contactoSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
-import { canEditMasterData, forbidden } from "@/lib/permissions";
+import { canAccessCentro, canEditMasterData, forbidden, noEncontrado } from "@/lib/permissions";
 import { DEMASIADO_GRANDE, readJsonBody } from "@/lib/request";
 import { withApi } from "@/lib/http";
 
@@ -16,6 +16,9 @@ async function handlerPOST(
   const user = auth;
   const { id: centroId } = await params;
 
+  // Si no puede ver ese cliente, se responde igual que si no existiera:
+  // un 403 aquí confirmaría que el registro existe (ver noEncontrado).
+  if (!canAccessCentro(user, centroId)) return noEncontrado();
   if (!canEditMasterData(user, centroId)) return forbidden();
 
   const body = await readJsonBody(request);

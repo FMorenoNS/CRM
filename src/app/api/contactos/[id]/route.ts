@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { registrarHistorial } from "@/lib/audit";
-import { canEditMasterData, forbidden } from "@/lib/permissions";
+import { canAccessCentro, canEditMasterData, forbidden, noEncontrado } from "@/lib/permissions";
 import { withApi } from "@/lib/http";
 
 async function handlerDELETE(
@@ -19,8 +19,11 @@ async function handlerDELETE(
     select: { centroId: true },
   });
   if (!existing) {
-    return NextResponse.json({ error: "No encontrado." }, { status: 404 });
+    return noEncontrado();
   }
+  // Si no puede ver ese cliente, se responde igual que si no existiera:
+  // un 403 aquí confirmaría que el registro existe (ver noEncontrado).
+  if (!canAccessCentro(user, existing.centroId)) return noEncontrado();
   if (!canEditMasterData(user, existing.centroId)) return forbidden();
 
   const contacto = await prisma.contacto.delete({ where: { id } });

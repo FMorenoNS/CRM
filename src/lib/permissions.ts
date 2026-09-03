@@ -39,6 +39,33 @@ export function canEditMasterData(user: SessionUser, centroId: string): boolean 
   return false;
 }
 
+/**
+ * Se usa cuando el motivo del rechazo es el ROL, no la visibilidad: la
+ * persona sí puede ver ese cliente, pero su rol no le permite esta acción
+ * concreta (por ejemplo, Marketing editando los datos maestros de un cliente
+ * que tiene delante en la lista). Ahí el mensaje explícito es útil y no
+ * revela nada que la persona no supiera ya.
+ */
 export function forbidden(mensaje = "No tienes permiso para realizar esta acción.") {
   return NextResponse.json({ error: mensaje }, { status: 403 });
+}
+
+/**
+ * Se usa cuando el motivo del rechazo es la VISIBILIDAD: el registro existe,
+ * pero no pertenece a ningún cliente de esta persona.
+ *
+ * Responde exactamente lo mismo que si el registro no existiera, y a
+ * propósito: si un rechazo por visibilidad devolviera 403 y una ficha
+ * inexistente devolviera 404, cualquiera con una cuenta de Dirección podría
+ * ir probando identificadores en la API y averiguar qué clientes y estancias
+ * hay en la cartera de los demás, sin llegar a ver los datos pero sabiendo
+ * que existen.
+ *
+ * Para que las dos situaciones sean indistinguibles de verdad, esta misma
+ * función se usa TAMBIÉN para el "no existe" de cada ruta: así el cuerpo y
+ * el código de estado son idénticos por construcción, y no por que alguien
+ * se acuerde de mantenerlos iguales.
+ */
+export function noEncontrado() {
+  return NextResponse.json({ error: "No se ha encontrado." }, { status: 404 });
 }

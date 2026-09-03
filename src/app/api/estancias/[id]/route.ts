@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { updateEstanciaSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
-import { canEditMasterData, forbidden } from "@/lib/permissions";
+import { canAccessCentro, canEditMasterData, forbidden, noEncontrado } from "@/lib/permissions";
 import { DEMASIADO_GRANDE, readJsonBody } from "@/lib/request";
 import { withApi } from "@/lib/http";
 
@@ -21,8 +21,11 @@ async function handlerPATCH(
     select: { centroId: true },
   });
   if (!existing) {
-    return NextResponse.json({ error: "No encontrada." }, { status: 404 });
+    return noEncontrado();
   }
+  // Si no puede ver ese cliente, se responde igual que si no existiera:
+  // un 403 aquí confirmaría que el registro existe (ver noEncontrado).
+  if (!canAccessCentro(user, existing.centroId)) return noEncontrado();
   if (!canEditMasterData(user, existing.centroId)) return forbidden();
 
   const body = await readJsonBody(request);
@@ -93,8 +96,11 @@ async function handlerDELETE(
     select: { centroId: true },
   });
   if (!existing) {
-    return NextResponse.json({ error: "No encontrada." }, { status: 404 });
+    return noEncontrado();
   }
+  // Si no puede ver ese cliente, se responde igual que si no existiera:
+  // un 403 aquí confirmaría que el registro existe (ver noEncontrado).
+  if (!canAccessCentro(user, existing.centroId)) return noEncontrado();
   if (!canEditMasterData(user, existing.centroId)) return forbidden();
 
   const estancia = await prisma.estancia.delete({ where: { id } });

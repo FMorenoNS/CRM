@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { isEmailConfigured, sendDocumentEmail } from "@/lib/email";
 import { registrarHistorial } from "@/lib/audit";
-import { canDoOperational, forbidden } from "@/lib/permissions";
+import { canAccessCentro, canDoOperational, forbidden, noEncontrado } from "@/lib/permissions";
 import { comprobarLimiteMemoria } from "@/lib/rate-limit";
 import { DEMASIADO_GRANDE, readJsonBody } from "@/lib/request";
 import { withApi } from "@/lib/http";
@@ -66,8 +66,11 @@ async function handlerPOST(
     select: { centroId: true },
   });
   if (!estancia) {
-    return NextResponse.json({ error: "No encontrada." }, { status: 404 });
+    return noEncontrado();
   }
+  // Si no puede ver ese cliente, se responde igual que si no existiera:
+  // un 403 aquí confirmaría que el registro existe (ver noEncontrado).
+  if (!canAccessCentro(user, estancia.centroId)) return noEncontrado();
   if (!canDoOperational(user, estancia.centroId)) return forbidden();
 
   try {
