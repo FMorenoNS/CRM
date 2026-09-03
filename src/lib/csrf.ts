@@ -56,8 +56,17 @@ export function requireSameOrigin(request: Request): NextResponse | null {
 
   // Sin cabecera Origin: algunos navegadores antiguos no la envían en
   // formularios normales. Se acepta el Referer como alternativa.
+  //
+  // Aquí no basta con comprobar que el Referer EMPIECE por la dirección
+  // esperada. Si la esperada es "https://crm.novaschool.es", una web
+  // atacante que se registre el dominio "crm.novaschool.es.atacante.com"
+  // tendría un Referer que empieza igual y pasaría el control. El host
+  // tiene que ACABAR ahí: o coincide exacto, o lo siguiente es la barra
+  // que separa la ruta.
   const referer = request.headers.get("referer");
-  if (referer && esperado && referer.startsWith(esperado)) return null;
+  if (referer && esperado) {
+    if (referer === esperado || referer.startsWith(`${esperado}/`)) return null;
+  }
 
   return NextResponse.json(
     { error: "Petición rechazada por seguridad." },
