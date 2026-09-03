@@ -11,15 +11,17 @@ export type DocumentoItem = {
   exito: boolean;
 };
 
+export type Destinatario = { nombre: string; email: string };
+
 export function EnviarDocumento({
   estanciaId,
   emailConfigured,
-  defaultEmail,
+  destinatarios,
   documentos,
 }: {
   estanciaId: string;
   emailConfigured: boolean;
-  defaultEmail: string;
+  destinatarios: Destinatario[];
   documentos: DocumentoItem[];
 }) {
   const router = useRouter();
@@ -76,7 +78,18 @@ export function EnviarDocumento({
         </ul>
       )}
 
-      {!emailConfigured ? (
+      {emailConfigured && destinatarios.length === 0 ? (
+        <div className="rounded border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+          <p className="font-medium text-gray-900">
+            Este cliente no tiene ningún contacto con email.
+          </p>
+          <p className="mt-1">
+            Los documentos solo se pueden enviar a las personas de contacto
+            fichadas del cliente. Añade una con su email en la ficha del
+            cliente y aparecerá aquí.
+          </p>
+        </div>
+      ) : !emailConfigured ? (
         <div className="rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           <p className="font-medium">Envío de correo no configurado todavía.</p>
           <p className="mt-1">
@@ -109,14 +122,18 @@ export function EnviarDocumento({
               <option value="PRESUPUESTO">Presupuesto</option>
               <option value="CONTRATO">Contrato</option>
             </select>
-            <input
+            <select
               name="destinatario"
-              type="email"
               required
-              defaultValue={defaultEmail}
-              placeholder="Email destinatario"
+              defaultValue={destinatarios[0]?.email ?? ""}
               className="rounded border border-gray-300 px-3 py-2 text-sm"
-            />
+            >
+              {destinatarios.map((d) => (
+                <option key={d.email} value={d.email}>
+                  {d.nombre ? `${d.nombre} · ${d.email}` : d.email}
+                </option>
+              ))}
+            </select>
           </div>
           {error && (
             <p className="text-sm text-red-600" role="alert">

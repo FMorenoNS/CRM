@@ -11,7 +11,11 @@ import { withApi } from "@/lib/http";
 
 const schema = z.object({
   tipo: z.enum(["PRESUPUESTO", "CONTRATO"]),
-  destinatario: z.string().email("Email de destinatario inválido."),
+  destinatario: z
+    .string()
+    .trim()
+    .max(320)
+    .email("Email de destinatario inválido."),
 });
 
 async function handlerPOST(
@@ -48,6 +52,49 @@ async function handlerPOST(
     );
   }
 
+  const estancia = await prisma.estancia.findUnique({
+    where: { id: estanciaId },
+    select: { centroId: true },
+  });
+  if (!estancia) {
+    return noEncontrado();
+  }
+  // Si no puede ver ese cliente, se responde igual que si no existiera:
+  // un 403 aquí confirmaría que el registro existe (ver noEncontrado).
+  if (!canAccessCentro(user, estancia.centroId)) return noEncontrado();
+  if (!canDoOperational(user, estancia.centroId)) return forbidden();
+
+  // El destinatario tiene que ser una persona de contacto de ESE cliente.
+  //
+  // Antes valía cualquier dirección con formato correcto, así que cualquiera
+  // con una cuenta podía hacer que el buzón de Novaschool escribiera a quien
+  // quisiera. El texto del correo es una plantilla fija, así que no servía
+  // para suplantar a nadie, pero sí para usar el dominio de la empresa como
+  // remitente hacia fuera, cuarenta veces por hora.
+  //
+  // La comprobación se hace aquí y no solo en el desplegable de la pantalla
+  // porque el desplegable no es una barrera: cualquiera puede enviar la
+  // petición a mano.
+  const esContactoDelCliente = await prisma.contacto.findFirst({
+    where: {
+      centroId: estancia.centroId,
+      email: { equals: parsed.data.destinatario, mode: "insensitive" },
+    },
+    select: { id: true },
+  });
+  if (!esContactoDelCliente) {
+    return NextResponse.json(
+      {
+        error:
+          "Solo se puede enviar a una persona de contacto de este cliente. Añádela en su ficha y vuelve a intentarlo.",
+      },
+      { status: 400 }
+    );
+  }
+
+  // El aviso de que el correo no está configurado va DESPUÉS de los permisos:
+  // antes iba primero y se lo llevaba cualquiera, incluso quien no tenía
+  // derecho a tocar esa estancia.
   if (!isEmailConfigured()) {
     return NextResponse.json(
       {
@@ -60,18 +107,6 @@ async function handlerPOST(
 
   const label =
     parsed.data.tipo === "PRESUPUESTO" ? "presupuesto" : "contrato";
-
-  const estancia = await prisma.estancia.findUnique({
-    where: { id: estanciaId },
-    select: { centroId: true },
-  });
-  if (!estancia) {
-    return noEncontrado();
-  }
-  // Si no puede ver ese cliente, se responde igual que si no existiera:
-  // un 403 aquí confirmaría que el registro existe (ver noEncontrado).
-  if (!canAccessCentro(user, estancia.centroId)) return noEncontrado();
-  if (!canDoOperational(user, estancia.centroId)) return forbidden();
 
   try {
     await sendDocumentEmail({

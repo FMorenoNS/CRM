@@ -33,10 +33,13 @@ export async function EstanciaPanel({
       centro: {
         select: {
           id: true,
+          // Todos los contactos con email: son las únicas direcciones a
+          // las que el CRM acepta enviar documentos, así que el desplegable
+          // tiene que ofrecerlas todas.
           contactos: {
             where: { email: { not: null } },
-            select: { email: true },
-            take: 1,
+            select: { nombre: true, email: true },
+            orderBy: { createdAt: "asc" },
           },
         },
       },
@@ -140,7 +143,10 @@ export async function EstanciaPanel({
           <EnviarDocumento
             estanciaId={estancia.id}
             emailConfigured={isEmailConfigured()}
-            defaultEmail={estancia.centro.contactos[0]?.email ?? ""}
+            destinatarios={estancia.centro.contactos.map((c) => ({
+              nombre: c.nombre,
+              email: c.email as string,
+            }))}
             documentos={documentos}
           />
         </div>
