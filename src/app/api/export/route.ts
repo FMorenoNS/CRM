@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { centroVisibilityFilter } from "@/lib/permissions";
+import { registrarEventoSistema } from "@/lib/audit";
+import { getClientIp } from "@/lib/request";
+import { comprobarLimiteMemoria } from "@/lib/rate-limit";
+import { withApi } from "@/lib/http";
 import {
   TIPO_CLIENTE_LABELS,
   TIPO_PROYECTO_LABELS,
@@ -28,10 +32,21 @@ function diasNoches(inicio: Date | null, fin: Date | null): { dias: number | "";
   return { dias: noches + 1, noches };
 }
 
-export async function GET(request: Request) {
+async function handlerGET(request: Request) {
   const auth = await requireApiUser(request);
   if (auth instanceof NextResponse) return auth;
   const user = auth;
+
+  // Una exportación se lleva toda la cartera de clientes en un fichero. Se
+  // limita a 20 por hora y por usuario: un uso normal es de una o dos, y
+  // así nadie puede vaciar el CRM en bucle sin que salte el límite.
+  const limite = comprobarLimiteMemoria(`export:${user.id}`, 20, 3600);
+  if (limite.bloqueado) {
+    return NextResponse.json(
+      { error: "Has hecho demasiadas exportaciones seguidas. Prueba dentro de un rato." },
+      { status: 429 }
+    );
+  }
 
   const visibilidad = centroVisibilityFilter(user);
 
@@ -137,11 +152,29 @@ export async function GET(request: Request) {
   const buffer = await workbook.xlsx.writeBuffer();
   const fecha = new Date().toISOString().slice(0, 10);
 
+  // Queda registrado quién se ha descargado los datos y cuántos registros
+  // se ha llevado: es información personal de terceros y hay que poder
+  // rendir cuentas de ella (RGPD).
+  await registrarEventoSistema({
+    actorId: user.id,
+    actorEmail: user.email,
+    accion: "Exportación de datos a Excel",
+    detalle: `${centros.length} cliente(s) y ${estancias.length} estancia(s)`,
+    ip: getClientIp(request),
+  });
+
   return new NextResponse(buffer, {
     headers: {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": `attachment; filename="crm-erasmus-${fecha}.xlsx"`,
+      // Un fichero con datos personales no debe quedarse en ninguna caché.
+      "Cache-Control": "no-store, private",
     },
   });
 }
+
+// Cada método se publica envuelto en withApi: si algo falla por dentro, el
+// usuario recibe un mensaje genérico con un código de referencia y el
+// detalle completo queda solo en el registro del servidor.
+export const GET = withApi("GET /api/export", handlerGET as never);

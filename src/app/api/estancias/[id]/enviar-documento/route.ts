@@ -5,13 +5,16 @@ import { requireApiUser } from "@/lib/api-auth";
 import { isEmailConfigured, sendDocumentEmail } from "@/lib/email";
 import { registrarHistorial } from "@/lib/audit";
 import { canDoOperational, forbidden } from "@/lib/permissions";
+import { comprobarLimiteMemoria } from "@/lib/rate-limit";
+import { DEMASIADO_GRANDE, readJsonBody } from "@/lib/request";
+import { withApi } from "@/lib/http";
 
 const schema = z.object({
   tipo: z.enum(["PRESUPUESTO", "CONTRATO"]),
   destinatario: z.string().email("Email de destinatario inválido."),
 });
 
-export async function POST(
+async function handlerPOST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -20,7 +23,23 @@ export async function POST(
   const user = auth;
   const { id: estanciaId } = await params;
 
-  const body = await request.json().catch(() => null);
+  // Máximo 40 envíos por hora y usuario: el correo sale del buzón de
+  // Novaschool y un uso abusivo dañaría la reputación del dominio.
+  const limite = comprobarLimiteMemoria(`email:${user.id}`, 40, 3600);
+  if (limite.bloqueado) {
+    return NextResponse.json(
+      { error: "Has enviado demasiados documentos seguidos. Prueba dentro de un rato." },
+      { status: 429 }
+    );
+  }
+
+  const body = await readJsonBody(request);
+  if (body === DEMASIADO_GRANDE) {
+    return NextResponse.json(
+      { error: "Los datos enviados son demasiado grandes." },
+      { status: 413 }
+    );
+  }
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
@@ -105,3 +124,8 @@ export async function POST(
     );
   }
 }
+
+// Cada método se publica envuelto en withApi: si algo falla por dentro, el
+// usuario recibe un mensaje genérico con un código de referencia y el
+// detalle completo queda solo en el registro del servidor.
+export const POST = withApi("POST /api/estancias/[id]/enviar-documento", handlerPOST as never);

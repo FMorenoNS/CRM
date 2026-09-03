@@ -3,8 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { registrarHistorial } from "@/lib/audit";
 import { canEditMasterData, forbidden } from "@/lib/permissions";
+import { withApi } from "@/lib/http";
 
-export async function DELETE(
+async function handlerDELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -33,3 +34,8 @@ export async function DELETE(
 
   return NextResponse.json({ ok: true });
 }
+
+// Cada método se publica envuelto en withApi: si algo falla por dentro, el
+// usuario recibe un mensaje genérico con un código de referencia y el
+// detalle completo queda solo en el registro del servidor.
+export const DELETE = withApi("DELETE /api/contactos/[id]", handlerDELETE as never);

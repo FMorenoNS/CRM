@@ -3,13 +3,21 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { createCentroSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
+import { DEMASIADO_GRANDE, readJsonBody } from "@/lib/request";
+import { withApi } from "@/lib/http";
 
-export async function POST(request: Request) {
+async function handlerPOST(request: Request) {
   const auth = await requireApiUser(request);
   if (auth instanceof NextResponse) return auth;
   const user = auth;
 
-  const body = await request.json().catch(() => null);
+  const body = await readJsonBody(request);
+  if (body === DEMASIADO_GRANDE) {
+    return NextResponse.json(
+      { error: "Los datos enviados son demasiado grandes." },
+      { status: 413 }
+    );
+  }
   const parsed = createCentroSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
@@ -136,3 +144,8 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ id: centro.id });
 }
+
+// Cada método se publica envuelto en withApi: si algo falla por dentro, el
+// usuario recibe un mensaje genérico con un código de referencia y el
+// detalle completo queda solo en el registro del servidor.
+export const POST = withApi("POST /api/centros", handlerPOST as never);

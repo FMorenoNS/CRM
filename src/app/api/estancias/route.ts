@@ -4,13 +4,21 @@ import { requireApiUser } from "@/lib/api-auth";
 import { estanciaSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
 import { canDoOperational, forbidden } from "@/lib/permissions";
+import { DEMASIADO_GRANDE, readJsonBody } from "@/lib/request";
+import { withApi } from "@/lib/http";
 
-export async function POST(request: Request) {
+async function handlerPOST(request: Request) {
   const auth = await requireApiUser(request);
   if (auth instanceof NextResponse) return auth;
   const user = auth;
 
-  const body = await request.json().catch(() => null);
+  const body = await readJsonBody(request);
+  if (body === DEMASIADO_GRANDE) {
+    return NextResponse.json(
+      { error: "Los datos enviados son demasiado grandes." },
+      { status: 413 }
+    );
+  }
   const parsed = estanciaSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
@@ -58,3 +66,8 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ id: estancia.id });
 }
+
+// Cada método se publica envuelto en withApi: si algo falla por dentro, el
+// usuario recibe un mensaje genérico con un código de referencia y el
+// detalle completo queda solo en el registro del servidor.
+export const POST = withApi("POST /api/estancias", handlerPOST as never);

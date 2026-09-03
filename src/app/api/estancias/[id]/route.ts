@@ -4,8 +4,10 @@ import { requireApiUser } from "@/lib/api-auth";
 import { updateEstanciaSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
 import { canEditMasterData, forbidden } from "@/lib/permissions";
+import { DEMASIADO_GRANDE, readJsonBody } from "@/lib/request";
+import { withApi } from "@/lib/http";
 
-export async function PATCH(
+async function handlerPATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -23,7 +25,13 @@ export async function PATCH(
   }
   if (!canEditMasterData(user, existing.centroId)) return forbidden();
 
-  const body = await request.json().catch(() => null);
+  const body = await readJsonBody(request);
+  if (body === DEMASIADO_GRANDE) {
+    return NextResponse.json(
+      { error: "Los datos enviados son demasiado grandes." },
+      { status: 413 }
+    );
+  }
   const parsed = updateEstanciaSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
@@ -71,7 +79,7 @@ export async function PATCH(
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(
+async function handlerDELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -100,3 +108,9 @@ export async function DELETE(
 
   return NextResponse.json({ ok: true });
 }
+
+// Cada método se publica envuelto en withApi: si algo falla por dentro, el
+// usuario recibe un mensaje genérico con un código de referencia y el
+// detalle completo queda solo en el registro del servidor.
+export const PATCH = withApi("PATCH /api/estancias/[id]", handlerPATCH as never);
+export const DELETE = withApi("DELETE /api/estancias/[id]", handlerDELETE as never);

@@ -4,9 +4,11 @@ import { requireApiUser } from "@/lib/api-auth";
 import { captacionSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
 import { canDoOperational, forbidden } from "@/lib/permissions";
+import { DEMASIADO_GRANDE, readJsonBody } from "@/lib/request";
+import { withApi } from "@/lib/http";
 
 // Crea o actualiza la interacción de captación de Facebook (una por estancia).
-export async function PUT(
+async function handlerPUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -24,7 +26,13 @@ export async function PUT(
   }
   if (!canDoOperational(user, estanciaExistente.centroId)) return forbidden();
 
-  const body = await request.json().catch(() => null);
+  const body = await readJsonBody(request, 6 * 1024 * 1024);
+  if (body === DEMASIADO_GRANDE) {
+    return NextResponse.json(
+      { error: "Los datos enviados son demasiado grandes." },
+      { status: 413 }
+    );
+  }
   const parsed = captacionSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
@@ -66,3 +74,8 @@ export async function PUT(
 
   return NextResponse.json({ ok: true });
 }
+
+// Cada método se publica envuelto en withApi: si algo falla por dentro, el
+// usuario recibe un mensaje genérico con un código de referencia y el
+// detalle completo queda solo en el registro del servidor.
+export const PUT = withApi("PUT /api/estancias/[id]/captacion", handlerPUT as never);
