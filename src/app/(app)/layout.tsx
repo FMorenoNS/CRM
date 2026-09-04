@@ -8,6 +8,7 @@ const NAV_LINKS = [
   { href: "/centros", label: "Clientes" },
   { href: "/estancias", label: "Pipeline" },
   { href: "/tareas", label: "Tareas" },
+  { href: "/informes", label: "Informes" },
 ];
 
 export default async function AppLayout({
