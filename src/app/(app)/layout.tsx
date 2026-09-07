@@ -2,13 +2,23 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { UserMenu } from "./user-menu";
+import { NavDropdown } from "./nav-dropdown";
+import { HeaderSearch } from "./header-search";
 
 const NAV_LINKS = [
   { href: "/", label: "Panel" },
   { href: "/centros", label: "Clientes" },
   { href: "/estancias", label: "Pipeline" },
+];
+
+const ANALISIS_LINKS = [
   { href: "/tareas", label: "Tareas" },
   { href: "/informes", label: "Informes" },
+];
+
+const ADMIN_LINKS = [
+  { href: "/habitaciones", label: "Habitaciones" },
+  { href: "/usuarios", label: "Usuarios" },
 ];
 
 export default async function AppLayout({
@@ -27,7 +37,7 @@ export default async function AppLayout({
             <span className="font-semibold text-brand-navy">
               CRM Erasmus+
             </span>
-            <nav className="flex gap-4 text-sm text-gray-600">
+            <nav className="flex items-center gap-4 text-sm text-gray-600">
               {NAV_LINKS.map((link) => (
                 <Link
                   key={link.href}
@@ -37,19 +47,14 @@ export default async function AppLayout({
                   {link.label}
                 </Link>
               ))}
+              <NavDropdown label="Análisis" links={ANALISIS_LINKS} />
               {session.role === "ADMIN" && (
-                <>
-                  <Link href="/habitaciones" className="hover:text-brand-navy">
-                    Habitaciones
-                  </Link>
-                  <Link href="/usuarios" className="hover:text-brand-navy">
-                    Usuarios
-                  </Link>
-                </>
+                <NavDropdown label="Administración" links={ADMIN_LINKS} />
               )}
             </nav>
           </div>
           <div className="flex items-center gap-4 text-sm text-gray-600">
+            <HeaderSearch />
             <UserMenu nombre={session.nombre} role={session.role} />
           </div>
         </div>
