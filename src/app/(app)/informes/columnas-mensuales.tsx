@@ -11,13 +11,16 @@ export function ColumnasMensuales({
   const max = Math.max(...items.map((i) => i.valor), 1);
 
   return (
-    <div className="flex items-end gap-2" style={{ height: 160 }}>
+    <div className="flex gap-2" style={{ height: 160 }}>
       {items.map((i) => (
-        <div key={i.etiqueta} className="flex flex-1 flex-col items-center gap-1">
+        <div key={i.etiqueta} className="flex h-full flex-1 flex-col items-center gap-1">
           <span className="text-xs font-medium tabular-nums text-gray-700">
             {formatValor(i.valor)}
           </span>
-          <div className="flex w-full flex-1 items-end">
+          {/* Pista con altura real (flex-1 de una columna h-full): sin esto
+              el porcentaje de la barra no tiene contra qué calcularse y no
+              se ve ninguna barra, aunque el valor no sea cero. */}
+          <div className="flex w-full flex-1 items-end border-b border-gray-200">
             <div
               className="w-full rounded-t-[4px] bg-brand-navy"
               style={{

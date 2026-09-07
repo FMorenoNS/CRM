@@ -6,7 +6,21 @@ import { centroVisibilityFilter } from "@/lib/permissions";
 import { InformesTabs } from "./informes-tabs";
 import { BarraHorizontal } from "./barra-horizontal";
 import { ColumnasMensuales } from "./columnas-mensuales";
+import { GraficoQuesitos } from "./grafico-quesitos";
 import { CANAL_OPTIONS } from "@/lib/labels";
+
+// Ganadas/perdidas es un resultado (bien/mal), no una categoría más: colores
+// de estado, no de paleta categórica. Canal de origen sí es identidad pura
+// (cuatro orígenes sin jerarquía entre ellos), así que usa los 4 primeros
+// tonos de la paleta categórica validada (orden fijo, distinguible en daltonismo).
+const COLOR_GANADAS = "#16a34a"; // verde (Tailwind green-600, mismo que el resto de la app)
+const COLOR_PERDIDAS = "#e11d48"; // rojo (Tailwind rose-600, ídem)
+const COLORES_CANAL: Record<string, string> = {
+  Facebook: "#2a78d6",
+  Email: "#eb6834",
+  Teléfono: "#1baf7a",
+  Otro: "#eda100",
+};
 
 // Una estancia cuenta como "contratada" (genera ingreso) a partir de que se
 // firma el contrato, inclusive las fases posteriores del viaje. Decisión de
@@ -262,25 +276,32 @@ export default async function InformesPage() {
               </div>
             </section>
 
-            <section>
-              <TituloSeccion titulo="Ganadas vs. perdidas" />
-              <div className="mt-3 rounded border border-gray-200 bg-white p-4">
-                <BarraHorizontal
-                  items={[
-                    { etiqueta: "Ganadas", valor: ganadas, color: "bg-green-600" },
-                    { etiqueta: "Perdidas", valor: perdidas, color: "bg-rose-600" },
-                  ]}
-                  formatValor={(v) => String(v)}
-                />
-              </div>
-            </section>
+            <div className="grid gap-8 md:grid-cols-2">
+              <section>
+                <TituloSeccion titulo="Ganadas vs. perdidas" />
+                <div className="mt-3 rounded border border-gray-200 bg-white p-4">
+                  <GraficoQuesitos
+                    items={[
+                      { etiqueta: "Ganadas", valor: ganadas, color: COLOR_GANADAS },
+                      { etiqueta: "Perdidas", valor: perdidas, color: COLOR_PERDIDAS },
+                    ]}
+                  />
+                </div>
+              </section>
 
-            <section>
-              <TituloSeccion titulo="Canal de origen" />
-              <div className="mt-3 rounded border border-gray-200 bg-white p-4">
-                <BarraHorizontal items={porCanal} formatValor={(v) => String(v)} />
-              </div>
-            </section>
+              <section>
+                <TituloSeccion titulo="Canal de origen" />
+                <div className="mt-3 rounded border border-gray-200 bg-white p-4">
+                  <GraficoQuesitos
+                    items={porCanal.map((c) => ({
+                      etiqueta: c.etiqueta,
+                      valor: c.valor,
+                      color: COLORES_CANAL[c.etiqueta] ?? "#898781",
+                    }))}
+                  />
+                </div>
+              </section>
+            </div>
 
             <section>
               <TituloSeccion titulo="Estancias por estado" />
