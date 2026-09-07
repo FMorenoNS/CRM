@@ -71,6 +71,22 @@ function ParticipanteRow({
   async function cambiarHabitacion(event: React.ChangeEvent<HTMLSelectElement>) {
     const anterior = habitacionId;
     const nueva = event.target.value;
+
+    const destino = habitaciones.find((h) => h.id === nueva);
+    let forzarMezcla = false;
+    if (destino?.rolOcupante && destino.rolOcupante !== participante.rol) {
+      const ocupanteLabel = PARTICIPANTE_LABELS[destino.rolOcupante]?.toLowerCase() ?? destino.rolOcupante;
+      const rolLabel = PARTICIPANTE_LABELS[participante.rol]?.toLowerCase() ?? participante.rol;
+      const confirmado = confirm(
+        `${destino.nombre} ya la ocupan ${ocupanteLabel}. Vas a meter ahí a ${participante.nombre} (${rolLabel}), compartiendo habitación con el otro rol. ¿Seguro que quieres hacerlo?`
+      );
+      if (!confirmado) {
+        event.target.value = anterior;
+        return;
+      }
+      forzarMezcla = true;
+    }
+
     setHabitacionId(nueva);
     setError(undefined);
     setIsPending(true);
@@ -78,7 +94,7 @@ function ParticipanteRow({
       const res = await fetch(`/api/participantes/${participante.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ habitacionId: nueva }),
+        body: JSON.stringify({ habitacionId: nueva, forzarMezcla }),
       });
       const result = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -217,15 +233,29 @@ export function Participantes({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(undefined);
-    setIsPending(true);
     const form = event.currentTarget;
     const data = new FormData(form);
-    const values = {
-      nombre: (data.get("nombre") as string) ?? "",
-      rol: (data.get("rol") as string) ?? "ALUMNOS",
-      habitacionId: (data.get("habitacionId") as string) || undefined,
-    };
+    const nombre = (data.get("nombre") as string) ?? "";
+    const rol = (data.get("rol") as string) ?? "ALUMNOS";
+    const habitacionId = (data.get("habitacionId") as string) || undefined;
+
+    let forzarMezcla = false;
+    if (habitacionId) {
+      const destino = habitaciones.find((h) => h.id === habitacionId);
+      if (destino?.rolOcupante && destino.rolOcupante !== rol) {
+        const ocupanteLabel = PARTICIPANTE_LABELS[destino.rolOcupante]?.toLowerCase() ?? destino.rolOcupante;
+        const rolLabel = PARTICIPANTE_LABELS[rol]?.toLowerCase() ?? rol;
+        const confirmado = confirm(
+          `${destino.nombre} ya la ocupan ${ocupanteLabel}. Vas a meter ahí a ${nombre || "este participante"} (${rolLabel}), compartiendo habitación con el otro rol. ¿Seguro que quieres hacerlo?`
+        );
+        if (!confirmado) return;
+        forzarMezcla = true;
+      }
+    }
+
+    setError(undefined);
+    setIsPending(true);
+    const values = { nombre, rol, habitacionId, forzarMezcla };
     try {
       const res = await fetch(`/api/estancias/${estanciaId}/participantes`, {
         method: "POST",

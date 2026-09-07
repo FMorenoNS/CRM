@@ -165,6 +165,10 @@ export const participanteSchema = z.object({
   nombre: z.string().trim().min(1, "El nombre es obligatorio."),
   rol: z.enum(["ALUMNOS", "PROFESORES"]),
   habitacionId: z.string().trim().optional().nullable().or(z.literal("")),
+  // Confirmación explícita del usuario para saltarse el aviso de "alumnos y
+  // profesores no comparten habitación" en un caso concreto. La capacidad
+  // física de la habitación se sigue comprobando siempre, esto no la salta.
+  forzarMezcla: z.boolean().optional(),
 });
 
 export const updateParticipanteSchema = participanteSchema.partial();

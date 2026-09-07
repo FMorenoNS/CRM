@@ -57,6 +57,7 @@ export async function PATCH(
     parsed.data.habitacionId !== undefined && habitacionFinal !== existing.habitacionId;
   const cambiaRol = parsed.data.rol !== undefined && rolFinal !== existing.rol;
 
+  let mezclaConfirmada = false;
   if (habitacionFinal && (cambiaHabitacion || cambiaRol)) {
     if (cambiaHabitacion) {
       const libres = await plazasLibres(
@@ -72,6 +73,9 @@ export async function PATCH(
         );
       }
     }
+    // Alumnos y profesores no comparten habitación, salvo confirmación
+    // explícita del usuario (forzarMezcla): la capacidad de arriba sí es un
+    // límite físico y nunca se salta.
     const ocupante = await rolQueOcupa(
       habitacionFinal,
       existing.estancia.fechaInicio,
@@ -79,13 +83,17 @@ export async function PATCH(
       id
     );
     if (ocupante && ocupante !== rolFinal) {
-      return NextResponse.json(
-        {
-          error:
-            "Esa habitación ya la ocupan personas de otro rol en esas fechas (alumnos y profesores no pueden compartir habitación).",
-        },
-        { status: 409 }
-      );
+      if (!parsed.data.forzarMezcla) {
+        return NextResponse.json(
+          {
+            error:
+              "Esa habitación ya la ocupan personas de otro rol en esas fechas (alumnos y profesores no pueden compartir habitación).",
+            codigo: "MEZCLA_ROLES",
+          },
+          { status: 409 }
+        );
+      }
+      mezclaConfirmada = true;
     }
   }
 
@@ -94,7 +102,9 @@ export async function PATCH(
   await registrarHistorial({
     centroId: existing.estancia.centroId,
     actorId: user.id,
-    accion: `Participante actualizado: ${data.nombre ?? existing.nombre}`,
+    accion: `Participante actualizado: ${data.nombre ?? existing.nombre}${
+      mezclaConfirmada ? " · habitación compartida con otro rol, confirmado a mano" : ""
+    }`,
   });
 
   return NextResponse.json({ ok: true });

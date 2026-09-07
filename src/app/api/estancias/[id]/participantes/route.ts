@@ -35,6 +35,7 @@ export async function POST(
   }
 
   const habitacionId = parsed.data.habitacionId || null;
+  let mezclaConfirmada = false;
   if (habitacionId) {
     const libres = await plazasLibres(
       habitacionId,
@@ -47,16 +48,22 @@ export async function POST(
         { status: 409 }
       );
     }
-    // Alumnos y profesores no comparten habitación.
+    // Alumnos y profesores no comparten habitación, salvo confirmación
+    // explícita del usuario (forzarMezcla): la capacidad de arriba sí es un
+    // límite físico y nunca se salta.
     const ocupante = await rolQueOcupa(habitacionId, estancia.fechaInicio, estancia.fechaFin);
     if (ocupante && ocupante !== parsed.data.rol) {
-      return NextResponse.json(
-        {
-          error:
-            "Esa habitación ya la ocupan personas de otro rol en esas fechas (alumnos y profesores no pueden compartir habitación).",
-        },
-        { status: 409 }
-      );
+      if (!parsed.data.forzarMezcla) {
+        return NextResponse.json(
+          {
+            error:
+              "Esa habitación ya la ocupan personas de otro rol en esas fechas (alumnos y profesores no pueden compartir habitación).",
+            codigo: "MEZCLA_ROLES",
+          },
+          { status: 409 }
+        );
+      }
+      mezclaConfirmada = true;
     }
   }
 
@@ -72,7 +79,9 @@ export async function POST(
   await registrarHistorial({
     centroId: estancia.centroId,
     actorId: user.id,
-    accion: `Participante añadido: ${parsed.data.nombre} (${PARTICIPANTE_LABELS[parsed.data.rol] ?? parsed.data.rol})`,
+    accion: `Participante añadido: ${parsed.data.nombre} (${PARTICIPANTE_LABELS[parsed.data.rol] ?? parsed.data.rol})${
+      mezclaConfirmada ? " · habitación compartida con otro rol, confirmado a mano" : ""
+    }`,
   });
 
   return NextResponse.json({ id: participante.id });
