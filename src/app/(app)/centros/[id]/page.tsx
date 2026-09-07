@@ -6,7 +6,9 @@ import { ContactoForm } from "./contacto-form";
 import { DeleteContactoButton, DeleteCentroButton } from "./delete-buttons";
 import { PARTICIPANTE_LABELS, TIPO_CLIENTE_LABELS } from "@/lib/labels";
 import { EstanciaSelector, type EstanciaOption } from "./estancia-selector";
-import { EstanciaPanel } from "./estancia-panel";
+import { buildEstanciaBloques } from "./estancia-panel";
+import { CentroTabs } from "./centro-tabs";
+import { Breadcrumbs } from "../../breadcrumbs";
 import { getSession } from "@/lib/session";
 import { canAccessCentro, canEditMasterData } from "@/lib/permissions";
 
@@ -46,10 +48,10 @@ export default async function CentroDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ estancia?: string }>;
+  searchParams: Promise<{ estancia?: string; tab?: string }>;
 }) {
   const { id } = await params;
-  const { estancia: estanciaParam } = await searchParams;
+  const { estancia: estanciaParam, tab } = await searchParams;
 
   const session = await getSession();
   if (!session) redirect("/login");
@@ -79,14 +81,130 @@ export default async function CentroDetailPage({
     estanciaParam && centro.estancias.some((e) => e.id === estanciaParam)
       ? estanciaParam
       : (centro.estancias[0]?.id ?? null);
+  const estanciaSeleccionada = centro.estancias.find((e) => e.id === selectedId);
 
   const opciones: EstanciaOption[] = centro.estancias.map((e) => ({
     id: e.id,
     label: estanciaLabel(e),
   }));
 
+  const { estancia: estanciaBloque, participantes: participantesBloque } = selectedId
+    ? await buildEstanciaBloques({ estanciaId: selectedId, puedeEditar })
+    : {
+        estancia: (
+          <p className="text-sm text-gray-500">
+            Este cliente no tiene estancias todavía. Crea la primera con
+            “Nueva estancia”.
+          </p>
+        ),
+        participantes: (
+          <p className="text-sm text-gray-500">
+            Selecciona o crea una estancia para gestionar sus participantes.
+          </p>
+        ),
+      };
+
+  const resumenBloque = (
+    <div className="grid gap-10 md:grid-cols-2">
+      <section>
+        <h2 className="text-lg font-medium text-gray-900">Datos del cliente</h2>
+        <div className="mt-4">
+          <CentroEditForm
+            centroId={centro.id}
+            readOnly={!puedeEditar}
+            defaultValues={{
+              nombre: centro.nombre,
+              tipo: centro.tipo,
+              pais: centro.pais,
+              ciudad: centro.ciudad,
+              canalOrigen: centro.canalOrigen,
+              notas: centro.notas,
+            }}
+          />
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-medium text-gray-900">Contactos</h2>
+        <ul className="mt-4 flex flex-col gap-2">
+          {centro.contactos.map((contacto) => (
+            <li
+              key={contacto.id}
+              className="flex items-center justify-between rounded border border-gray-200 bg-white px-4 py-2 text-sm"
+            >
+              <div>
+                <p className="font-medium text-gray-900">{contacto.nombre}</p>
+                <p className="text-gray-500">
+                  {[contacto.cargo, contacto.telefono, contacto.email]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </div>
+              {puedeEditar && <DeleteContactoButton contactoId={contacto.id} />}
+            </li>
+          ))}
+          {centro.contactos.length === 0 && (
+            <p className="text-sm text-gray-500">Sin contactos todavía.</p>
+          )}
+        </ul>
+        {puedeEditar && (
+          <div className="mt-4">
+            <ContactoForm centroId={centro.id} />
+          </div>
+        )}
+      </section>
+    </div>
+  );
+
+  const estanciaTabBloque = (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <EstanciaSelector centroId={centro.id} estancias={opciones} selectedId={selectedId} />
+        <Link
+          href={`/estancias/nueva?centroId=${centro.id}`}
+          className="rounded bg-brand-navy px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-navy-dark"
+        >
+          Nueva estancia
+        </Link>
+      </div>
+      <div className="mt-4">{estanciaBloque}</div>
+    </div>
+  );
+
+  const historialBloque = (
+    <ul className="flex flex-col gap-2">
+      {historial.map((h) => (
+        <li
+          key={h.id}
+          className="rounded border border-gray-200 bg-white px-4 py-2 text-sm"
+        >
+          <p className="text-gray-900">
+            <span className="font-medium">{h.accion}</span>{" "}
+            <span className="text-gray-400">
+              · {formatFechaHora(h.createdAt)} · {h.actor.nombre}
+            </span>
+          </p>
+          {h.detalle && <p className="text-gray-600">{h.detalle}</p>}
+        </li>
+      ))}
+      {historial.length === 0 && (
+        <p className="text-sm text-gray-500">Sin cambios registrados todavía.</p>
+      )}
+    </ul>
+  );
+
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-4">
+      <Breadcrumbs
+        items={[
+          { label: "Clientes", href: "/centros" },
+          { label: centro.nombre },
+          ...(estanciaSeleccionada
+            ? [{ label: estanciaLabel(estanciaSeleccionada) }]
+            : []),
+        ]}
+      />
+
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">
@@ -102,112 +220,13 @@ export default async function CentroDetailPage({
         {puedeEditar && <DeleteCentroButton centroId={centro.id} />}
       </div>
 
-      <div className="grid gap-10 md:grid-cols-2">
-        <section>
-          <h2 className="text-lg font-medium text-gray-900">Datos del cliente</h2>
-          <div className="mt-4">
-            <CentroEditForm
-              centroId={centro.id}
-              readOnly={!puedeEditar}
-              defaultValues={{
-                nombre: centro.nombre,
-                tipo: centro.tipo,
-                pais: centro.pais,
-                ciudad: centro.ciudad,
-                canalOrigen: centro.canalOrigen,
-                notas: centro.notas,
-              }}
-            />
-          </div>
-        </section>
-
-        <section>
-          <h2 className="text-lg font-medium text-gray-900">Contactos</h2>
-          <ul className="mt-4 flex flex-col gap-2">
-            {centro.contactos.map((contacto) => (
-              <li
-                key={contacto.id}
-                className="flex items-center justify-between rounded border border-gray-200 bg-white px-4 py-2 text-sm"
-              >
-                <div>
-                  <p className="font-medium text-gray-900">{contacto.nombre}</p>
-                  <p className="text-gray-500">
-                    {[contacto.cargo, contacto.telefono, contacto.email]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
-                </div>
-                {puedeEditar && <DeleteContactoButton contactoId={contacto.id} />}
-              </li>
-            ))}
-            {centro.contactos.length === 0 && (
-              <p className="text-sm text-gray-500">Sin contactos todavía.</p>
-            )}
-          </ul>
-          {puedeEditar && (
-            <div className="mt-4">
-              <ContactoForm centroId={centro.id} />
-            </div>
-          )}
-        </section>
-      </div>
-
-      <section>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-4">
-            <h2 className="text-lg font-medium text-gray-900">Estancias</h2>
-            <EstanciaSelector
-              centroId={centro.id}
-              estancias={opciones}
-              selectedId={selectedId}
-            />
-          </div>
-          <Link
-            href={`/estancias/nueva?centroId=${centro.id}`}
-            className="rounded bg-brand-navy px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-navy-dark"
-          >
-            Nueva estancia
-          </Link>
-        </div>
-
-        <div className="mt-4">
-          {selectedId ? (
-            <EstanciaPanel estanciaId={selectedId} puedeEditar={puedeEditar} />
-          ) : (
-            <p className="text-sm text-gray-500">
-              Este cliente no tiene estancias todavía. Crea la primera con
-              “Nueva estancia”.
-            </p>
-          )}
-        </div>
-      </section>
-
-      <section>
-        <h2 className="text-lg font-medium text-gray-900">
-          Historial de cambios
-        </h2>
-        <ul className="mt-4 flex flex-col gap-2">
-          {historial.map((h) => (
-            <li
-              key={h.id}
-              className="rounded border border-gray-200 bg-white px-4 py-2 text-sm"
-            >
-              <p className="text-gray-900">
-                <span className="font-medium">{h.accion}</span>{" "}
-                <span className="text-gray-400">
-                  · {formatFechaHora(h.createdAt)} · {h.actor.nombre}
-                </span>
-              </p>
-              {h.detalle && <p className="text-gray-600">{h.detalle}</p>}
-            </li>
-          ))}
-          {historial.length === 0 && (
-            <p className="text-sm text-gray-500">
-              Sin cambios registrados todavía.
-            </p>
-          )}
-        </ul>
-      </section>
+      <CentroTabs
+        tabInicial={tab ?? "resumen"}
+        resumen={resumenBloque}
+        estancia={estanciaTabBloque}
+        participantes={participantesBloque}
+        historial={historialBloque}
+      />
     </div>
   );
 }

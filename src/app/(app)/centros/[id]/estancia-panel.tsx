@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { prisma } from "@/lib/prisma";
 import { ESTADO_LABELS } from "@/lib/labels";
 import { isEmailConfigured } from "@/lib/email";
@@ -26,13 +27,17 @@ function toDateInput(d: Date | null): string {
   return d ? d.toISOString().slice(0, 10) : "";
 }
 
-export async function EstanciaPanel({
+// Construye el contenido de las pestañas "Estancia" y "Participantes" de la
+// ficha del cliente. Sigue siendo una sola consulta/cálculo (igual que
+// antes, cuando todo vivía en una sola pestaña): solo cambia cómo se
+// reparte el JSX resultante entre las dos pestañas.
+export async function buildEstanciaBloques({
   estanciaId,
   puedeEditar,
 }: {
   estanciaId: string;
   puedeEditar: boolean;
-}) {
+}): Promise<{ estancia: ReactNode; participantes: ReactNode }> {
   const estancia = await prisma.estancia.findUnique({
     where: { id: estanciaId },
     include: {
@@ -59,11 +64,12 @@ export async function EstanciaPanel({
   });
 
   if (!estancia) {
-    return (
+    const noEncontrada = (
       <p className="text-sm text-gray-500">
         No se encontró la estancia seleccionada.
       </p>
     );
+    return { estancia: noEncontrada, participantes: noEncontrada };
   }
 
   const documentos: DocumentoItem[] = estancia.documentosEnviados.map((d) => ({
@@ -127,7 +133,7 @@ export async function EstanciaPanel({
     profesores: estancia.numeroProfesores ?? 0,
   };
 
-  return (
+  const estanciaBloque = (
     <div className="flex flex-col gap-8 rounded-lg border border-gray-200 bg-white p-6">
       <div className="flex items-center justify-between">
         <span className="inline-block rounded-full bg-brand-navy/10 px-3 py-1 text-xs font-medium text-brand-navy">
@@ -204,21 +210,20 @@ export async function EstanciaPanel({
           />
         </div>
       </section>
-
-      <section>
-        <h3 className="text-base font-medium text-gray-900">
-          Participantes y habitaciones
-        </h3>
-        <div className="mt-4">
-          <Participantes
-            estanciaId={estancia.id}
-            participantes={participantes}
-            habitaciones={habitacionesDisponibles}
-            necesarios={necesarios}
-            totalLibres={totalLibres}
-          />
-        </div>
-      </section>
     </div>
   );
+
+  const participantesBloque = (
+    <div className="rounded-lg border border-gray-200 bg-white p-6">
+      <Participantes
+        estanciaId={estancia.id}
+        participantes={participantes}
+        habitaciones={habitacionesDisponibles}
+        necesarios={necesarios}
+        totalLibres={totalLibres}
+      />
+    </div>
+  );
+
+  return { estancia: estanciaBloque, participantes: participantesBloque };
 }
