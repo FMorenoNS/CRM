@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PIPELINE_ESTADOS, ESTADO_LABELS } from "@/lib/labels";
+import { EstanciaQuickActions } from "./quick-actions";
 
 export type EstanciaCard = {
   id: string;
@@ -58,13 +59,16 @@ function Card({
       </p>
       <p className="text-xs text-gray-500">{estancia.tipoPrograma}</p>
       {estancia.puedeEditar && (
-        <button
-          type="button"
-          onClick={() => onToggleActivo(estancia.id)}
-          className="mt-2 text-xs text-gray-500 hover:text-gray-800 hover:underline"
-        >
-          {activa ? "Marcar inactiva" : "Marcar activa"}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => onToggleActivo(estancia.id)}
+            className="mt-2 text-xs text-gray-500 hover:text-gray-800 hover:underline"
+          >
+            {activa ? "Marcar inactiva" : "Marcar activa"}
+          </button>
+          <EstanciaQuickActions estanciaId={estancia.id} />
+        </div>
       )}
     </div>
   );
