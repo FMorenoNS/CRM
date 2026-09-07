@@ -16,7 +16,14 @@ export type HabitacionOption = {
   id: string;
   nombre: string;
   plazasLibres: number;
+  rolOcupante: "ALUMNOS" | "PROFESORES" | null;
 };
+
+function etiquetaHabitacion(h: HabitacionOption): string {
+  const plazas = h.plazasLibres > 0 ? `${h.plazasLibres} libres` : "sin plazas";
+  if (!h.rolOcupante) return `${h.nombre} (${plazas})`;
+  return `${h.nombre} (${plazas} · ${PARTICIPANTE_LABELS[h.rolOcupante]?.toLowerCase() ?? h.rolOcupante})`;
+}
 
 function HabitacionSelect({
   name,
@@ -42,7 +49,7 @@ function HabitacionSelect({
       <option value="">Sin habitación asignada</option>
       {habitaciones.map((h) => (
         <option key={h.id} value={h.id}>
-          {h.nombre} ({h.plazasLibres > 0 ? `${h.plazasLibres} libres` : "sin plazas"})
+          {etiquetaHabitacion(h)}
         </option>
       ))}
     </select>
@@ -118,7 +125,7 @@ function ParticipanteRow({
           <option value="">Sin habitación asignada</option>
           {habitaciones.map((h) => (
             <option key={h.id} value={h.id}>
-              {h.nombre} ({h.plazasLibres > 0 ? `${h.plazasLibres} libres` : "sin plazas"})
+              {etiquetaHabitacion(h)}
             </option>
           ))}
         </select>

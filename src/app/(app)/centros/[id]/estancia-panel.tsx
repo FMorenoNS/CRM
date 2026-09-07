@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ESTADO_LABELS } from "@/lib/labels";
 import { isEmailConfigured } from "@/lib/email";
-import { plazasLibres } from "@/lib/habitaciones";
+import { plazasLibres, rolQueOcupa } from "@/lib/habitaciones";
 import { EstanciaForm } from "@/app/(app)/estancias/estancia-form";
 import {
   Interacciones,
@@ -108,11 +108,15 @@ export async function EstanciaPanel({
     orderBy: { nombre: "asc" },
   });
   const habitacionesDisponibles: HabitacionOption[] = await Promise.all(
-    habitacionesActivas.map(async (h) => ({
-      id: h.id,
-      nombre: h.nombre,
-      plazasLibres: await plazasLibres(h.id, estancia.fechaInicio, estancia.fechaFin),
-    }))
+    habitacionesActivas.map(async (h) => {
+      const rolOcupante = await rolQueOcupa(h.id, estancia.fechaInicio, estancia.fechaFin);
+      return {
+        id: h.id,
+        nombre: h.nombre,
+        plazasLibres: await plazasLibres(h.id, estancia.fechaInicio, estancia.fechaFin),
+        rolOcupante: rolOcupante === "MIXTA" ? null : rolOcupante,
+      };
+    })
   );
   const totalLibres = habitacionesDisponibles.reduce(
     (suma, h) => suma + Math.max(0, h.plazasLibres),

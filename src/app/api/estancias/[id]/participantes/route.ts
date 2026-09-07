@@ -5,7 +5,7 @@ import { participanteSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
 import { PARTICIPANTE_LABELS } from "@/lib/labels";
 import { canDoOperational, forbidden } from "@/lib/permissions";
-import { plazasLibres } from "@/lib/habitaciones";
+import { plazasLibres, rolQueOcupa } from "@/lib/habitaciones";
 
 export async function POST(
   request: Request,
@@ -44,6 +44,17 @@ export async function POST(
     if (libres <= 0) {
       return NextResponse.json(
         { error: "Esa habitación no tiene plazas libres en esas fechas." },
+        { status: 409 }
+      );
+    }
+    // Alumnos y profesores no comparten habitación.
+    const ocupante = await rolQueOcupa(habitacionId, estancia.fechaInicio, estancia.fechaFin);
+    if (ocupante && ocupante !== parsed.data.rol) {
+      return NextResponse.json(
+        {
+          error:
+            "Esa habitación ya la ocupan personas de otro rol en esas fechas (alumnos y profesores no pueden compartir habitación).",
+        },
         { status: 409 }
       );
     }

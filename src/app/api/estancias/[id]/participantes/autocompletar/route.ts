@@ -3,13 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
 import { registrarHistorial } from "@/lib/audit";
 import { canDoOperational, forbidden } from "@/lib/permissions";
-import { plazasLibres } from "@/lib/habitaciones";
+import { plazasLibres, rolQueOcupa } from "@/lib/habitaciones";
 
 // Genera de golpe la lista de participantes de una estancia (uno por cada
 // alumno y cada profesor de "Número de alumnos"/"Número de profesores") y
-// los reparte en habitaciones con plazas libres en esas fechas. Todo o
-// nada: si no caben todos, no se crea ni se asigna a nadie (decisión de
-// producto), para no dejar la lista a medias.
+// los reparte en habitaciones con plazas libres en esas fechas, sin mezclar
+// alumnos y profesores en la misma habitación (regla de negocio). Todo o
+// nada: si no caben todos respetando esa separación, no se crea ni se
+// asigna a nadie, para no dejar la lista a medias.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -40,8 +41,7 @@ export async function POST(
 
   const nAlumnos = estancia.numeroAlumnos ?? 0;
   const nProfesores = estancia.numeroProfesores ?? 0;
-  const total = nAlumnos + nProfesores;
-  if (total <= 0) {
+  if (nAlumnos + nProfesores <= 0) {
     return NextResponse.json(
       {
         error:
@@ -51,49 +51,65 @@ export async function POST(
     );
   }
 
-  const habitaciones = await prisma.habitacion.findMany({
+  const habitacionesActivas = await prisma.habitacion.findMany({
     where: { activa: true },
     orderBy: { nombre: "asc" },
   });
-  const libresPorHabitacion = await Promise.all(
-    habitaciones.map(async (h) => ({
+
+  // Estado de partida de cada habitación: plazas libres y, si ya tiene
+  // ocupantes en esas fechas, de qué rol son (esa habitación queda cerrada
+  // al otro rol aunque le sobre capacidad).
+  const habitaciones = await Promise.all(
+    habitacionesActivas.map(async (h) => ({
       id: h.id,
-      libres: await plazasLibres(h.id, estancia.fechaInicio, estancia.fechaFin),
+      libres: Math.max(
+        0,
+        await plazasLibres(h.id, estancia.fechaInicio, estancia.fechaFin)
+      ),
+      rol: await rolQueOcupa(h.id, estancia.fechaInicio, estancia.fechaFin),
     }))
   );
-  const totalLibres = libresPorHabitacion.reduce(
-    (suma, h) => suma + Math.max(0, h.libres),
-    0
-  );
 
-  if (totalLibres < total) {
+  // Reparto en dos pasadas (alumnos y luego profesores) para no mezclar:
+  // una habitación que ya se usó para un rol en esta simulación deja de
+  // estar disponible para el otro, aunque le quede sitio físico.
+  function repartir(rol: "ALUMNOS" | "PROFESORES", cantidad: number) {
+    const asignados: string[] = [];
+    for (const h of habitaciones) {
+      if (asignados.length >= cantidad) break;
+      if (h.rol !== null && h.rol !== rol) continue; // ocupada por el otro rol
+      const toma = Math.min(h.libres, cantidad - asignados.length);
+      for (let i = 0; i < toma; i++) asignados.push(h.id);
+      h.libres -= toma;
+      if (toma > 0) h.rol = rol;
+    }
+    return asignados;
+  }
+
+  const habitacionesAlumnos = repartir("ALUMNOS", nAlumnos);
+  const habitacionesProfesores = repartir("PROFESORES", nProfesores);
+
+  if (habitacionesAlumnos.length < nAlumnos || habitacionesProfesores.length < nProfesores) {
     return NextResponse.json(
       {
-        error: `No hay plazas suficientes en esas fechas: hacen falta ${total} y hay ${totalLibres} libres. Añade habitaciones o libera plazas antes de autocompletar.`,
+        error: `No hay suficientes habitaciones separadas por rol en esas fechas: hacen falta ${nAlumnos} plaza(s) de alumnos (hay ${habitacionesAlumnos.length}) y ${nProfesores} de profesores (hay ${habitacionesProfesores.length}). Añade habitaciones o libera plazas antes de autocompletar.`,
       },
       { status: 409 }
     );
   }
 
-  // Reparto: llena las habitaciones en orden hasta agotar cada una.
-  const nuevos: { nombre: string; rol: "ALUMNOS" | "PROFESORES"; habitacionId: string }[] = [];
-  for (let i = 1; i <= nAlumnos; i++) {
-    nuevos.push({ nombre: `Alumno ${i}`, rol: "ALUMNOS", habitacionId: "" });
-  }
-  for (let i = 1; i <= nProfesores; i++) {
-    nuevos.push({ nombre: `Profesor ${i}`, rol: "PROFESORES", habitacionId: "" });
-  }
-
-  let cursor = 0;
-  for (const h of libresPorHabitacion) {
-    let disponibles = Math.max(0, h.libres);
-    while (disponibles > 0 && cursor < nuevos.length) {
-      nuevos[cursor].habitacionId = h.id;
-      cursor++;
-      disponibles--;
-    }
-    if (cursor >= nuevos.length) break;
-  }
+  const nuevos: { nombre: string; rol: "ALUMNOS" | "PROFESORES"; habitacionId: string }[] = [
+    ...habitacionesAlumnos.map((habitacionId, i) => ({
+      nombre: `Alumno ${i + 1}`,
+      rol: "ALUMNOS" as const,
+      habitacionId,
+    })),
+    ...habitacionesProfesores.map((habitacionId, i) => ({
+      nombre: `Profesor ${i + 1}`,
+      rol: "PROFESORES" as const,
+      habitacionId,
+    })),
+  ];
 
   await prisma.$transaction(
     nuevos.map((p) =>

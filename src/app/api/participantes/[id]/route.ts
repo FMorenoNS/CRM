@@ -5,7 +5,7 @@ import { updateParticipanteSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
 import { PARTICIPANTE_LABELS } from "@/lib/labels";
 import { canDoOperational, forbidden } from "@/lib/permissions";
-import { plazasLibres } from "@/lib/habitaciones";
+import { plazasLibres, rolQueOcupa } from "@/lib/habitaciones";
 
 export async function PATCH(
   request: Request,
@@ -42,12 +42,25 @@ export async function PATCH(
   const data: { nombre?: string; rol?: "ALUMNOS" | "PROFESORES"; habitacionId?: string | null } = {};
   if (parsed.data.nombre !== undefined) data.nombre = parsed.data.nombre;
   if (parsed.data.rol !== undefined) data.rol = parsed.data.rol;
-
   if (parsed.data.habitacionId !== undefined) {
-    const nuevaHabitacionId = parsed.data.habitacionId || null;
-    if (nuevaHabitacionId && nuevaHabitacionId !== existing.habitacionId) {
+    data.habitacionId = parsed.data.habitacionId || null;
+  }
+
+  // Si al terminar el cambio el participante queda en una habitación (ya
+  // sea porque se le asigna una nueva o porque cambia de rol quedándose en
+  // la que tenía), hay que revalidar capacidad y que alumnos/profesores no
+  // se mezclen: cualquiera de los dos cambios puede romperlo.
+  const habitacionFinal =
+    parsed.data.habitacionId !== undefined ? data.habitacionId : existing.habitacionId;
+  const rolFinal = data.rol ?? existing.rol;
+  const cambiaHabitacion =
+    parsed.data.habitacionId !== undefined && habitacionFinal !== existing.habitacionId;
+  const cambiaRol = parsed.data.rol !== undefined && rolFinal !== existing.rol;
+
+  if (habitacionFinal && (cambiaHabitacion || cambiaRol)) {
+    if (cambiaHabitacion) {
       const libres = await plazasLibres(
-        nuevaHabitacionId,
+        habitacionFinal,
         existing.estancia.fechaInicio,
         existing.estancia.fechaFin,
         id
@@ -59,7 +72,21 @@ export async function PATCH(
         );
       }
     }
-    data.habitacionId = nuevaHabitacionId;
+    const ocupante = await rolQueOcupa(
+      habitacionFinal,
+      existing.estancia.fechaInicio,
+      existing.estancia.fechaFin,
+      id
+    );
+    if (ocupante && ocupante !== rolFinal) {
+      return NextResponse.json(
+        {
+          error:
+            "Esa habitación ya la ocupan personas de otro rol en esas fechas (alumnos y profesores no pueden compartir habitación).",
+        },
+        { status: 409 }
+      );
+    }
   }
 
   await prisma.participante.update({ where: { id }, data });
