@@ -147,4 +147,24 @@ export const userSchema = z.object({
     .or(z.literal("")),
 });
 
+export const habitacionSchema = z.object({
+  nombre: z.string().trim().min(1, "El nombre es obligatorio."),
+  capacidad: z.coerce
+    .number()
+    .int("La capacidad debe ser un número entero.")
+    .min(1, "La capacidad debe ser al menos 1.")
+    .max(50, "La capacidad parece demasiado alta."),
+  activa: z.boolean().optional(),
+});
+
+export const updateHabitacionSchema = habitacionSchema.partial();
+
+export const participanteSchema = z.object({
+  nombre: z.string().trim().min(1, "El nombre es obligatorio."),
+  rol: z.enum(["ALUMNOS", "PROFESORES"]),
+  habitacionId: z.string().trim().optional().nullable().or(z.literal("")),
+});
+
+export const updateParticipanteSchema = participanteSchema.partial();
+
 export const ESTADO_VALUES = ESTADOS;

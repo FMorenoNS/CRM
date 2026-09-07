@@ -165,9 +165,43 @@ model Estancia {
 
   interacciones      Interaccion[]
   documentosEnviados DocumentoEnviado[]
+  participantes      Participante[]
 
   @@index([centroId])
   @@index([estado])
+}
+
+// Catálogo de habitaciones de la residencia (una sola sede, Granada). No
+// pertenece a ningún cliente: es configuración interna, la gestiona ADMIN.
+model Habitacion {
+  id        String   @id @default(cuid())
+  nombre    String
+  capacidad Int
+  activa    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  participantes Participante[]
+
+  @@index([activa])
+}
+
+// Lista nominal de personas de un grupo (estudiante o profesor
+// acompañante). Deliberadamente sin datos sensibles (alergias, datos
+// médicos, menor de edad, contacto de emergencia): pausado a petición del
+// usuario, se añade solo si hace falta más adelante.
+model Participante {
+  id           String           @id @default(cuid())
+  estanciaId   String
+  estancia     Estancia         @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  nombre       String
+  rol          TipoParticipante
+  habitacionId String?
+  habitacion   Habitacion?      @relation(fields: [habitacionId], references: [id])
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([estanciaId])
+  @@index([habitacionId])
 }
 
 model Interaccion {

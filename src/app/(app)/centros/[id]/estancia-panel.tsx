@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ESTADO_LABELS } from "@/lib/labels";
 import { isEmailConfigured } from "@/lib/email";
+import { plazasLibres } from "@/lib/habitaciones";
 import { EstanciaForm } from "@/app/(app)/estancias/estancia-form";
 import {
   Interacciones,
@@ -15,6 +16,11 @@ import {
   CaptacionFacebook,
   type CaptacionData,
 } from "@/app/(app)/estancias/[id]/captacion-facebook";
+import {
+  Participantes,
+  type ParticipanteItem,
+  type HabitacionOption,
+} from "@/app/(app)/estancias/[id]/participantes";
 
 function toDateInput(d: Date | null): string {
   return d ? d.toISOString().slice(0, 10) : "";
@@ -45,6 +51,10 @@ export async function EstanciaPanel({
         include: { autor: { select: { nombre: true } } },
       },
       documentosEnviados: { orderBy: { enviadoEn: "desc" } },
+      participantes: {
+        orderBy: { createdAt: "asc" },
+        include: { habitacion: { select: { nombre: true } } },
+      },
     },
   });
 
@@ -84,6 +94,26 @@ export async function EstanciaPanel({
       fecha: i.fecha.toISOString(),
       autorNombre: i.autor.nombre,
     }));
+
+  const participantes: ParticipanteItem[] = estancia.participantes.map((p) => ({
+    id: p.id,
+    nombre: p.nombre,
+    rol: p.rol,
+    habitacionId: p.habitacionId,
+    habitacionNombre: p.habitacion?.nombre ?? null,
+  }));
+
+  const habitacionesActivas = await prisma.habitacion.findMany({
+    where: { activa: true },
+    orderBy: { nombre: "asc" },
+  });
+  const habitacionesDisponibles: HabitacionOption[] = await Promise.all(
+    habitacionesActivas.map(async (h) => ({
+      id: h.id,
+      nombre: h.nombre,
+      plazasLibres: await plazasLibres(h.id, estancia.fechaInicio, estancia.fechaFin),
+    }))
+  );
 
   return (
     <div className="flex flex-col gap-8 rounded-lg border border-gray-200 bg-white p-6">
@@ -155,6 +185,19 @@ export async function EstanciaPanel({
           <Interacciones
             estanciaId={estancia.id}
             interacciones={interacciones}
+          />
+        </div>
+      </section>
+
+      <section>
+        <h3 className="text-base font-medium text-gray-900">
+          Participantes y habitaciones
+        </h3>
+        <div className="mt-4">
+          <Participantes
+            estanciaId={estancia.id}
+            participantes={participantes}
+            habitaciones={habitacionesDisponibles}
           />
         </div>
       </section>

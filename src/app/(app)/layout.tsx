@@ -38,9 +38,14 @@ export default async function AppLayout({
                 </Link>
               ))}
               {session.role === "ADMIN" && (
-                <Link href="/usuarios" className="hover:text-brand-navy">
-                  Usuarios
-                </Link>
+                <>
+                  <Link href="/habitaciones" className="hover:text-brand-navy">
+                    Habitaciones
+                  </Link>
+                  <Link href="/usuarios" className="hover:text-brand-navy">
+                    Usuarios
+                  </Link>
+                </>
               )}
             </nav>
           </div>
