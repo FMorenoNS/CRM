@@ -99,7 +99,8 @@ export default async function InformesPage() {
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Informes</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Cómo va el proyecto: ingresos, captación y conversión.
+          La vista de conjunto: ingresos, captación y conversión. Para el
+          día a día (qué hacer hoy) mejor el Panel.
         </p>
       </div>
 

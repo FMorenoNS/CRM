@@ -224,6 +224,13 @@ export default async function DashboardPage() {
           </div>
         </div>
       </section>
+
+      <p className="text-sm text-gray-500">
+        Este es el resumen del día a día.{" "}
+        <Link href="/informes" className="text-brand-navy hover:underline">
+          Ver el desglose completo de ingresos y conversión en Informes →
+        </Link>
+      </p>
     </div>
   );
 }
