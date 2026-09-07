@@ -34,6 +34,7 @@ export async function GET(request: Request) {
         rol: true,
         habitacionId: true,
         estanciaId: true,
+        alergias: true,
         estancia: { select: { centro: { select: { id: true, nombre: true } } } },
       },
     }),
@@ -53,6 +54,7 @@ export async function GET(request: Request) {
         centroId: p.estancia.centro.id,
         centroNombre: p.estancia.centro.nombre,
         estanciaId: p.estanciaId,
+        alergias: p.alergias,
       })),
   }));
 

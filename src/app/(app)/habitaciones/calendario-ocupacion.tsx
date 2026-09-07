@@ -50,6 +50,7 @@ type OcupanteDia = {
   centroId: string;
   centroNombre: string;
   estanciaId: string;
+  alergias: string | null;
 };
 
 type HabitacionDia = {
@@ -58,6 +59,14 @@ type HabitacionDia = {
   capacidad: number;
   ocupantes: OcupanteDia[];
 };
+
+type Vista = "habitacion" | "cliente" | "comedor";
+
+const VISTAS: { id: Vista; label: string }[] = [
+  { id: "habitacion", label: "Por habitación" },
+  { id: "cliente", label: "Por cliente" },
+  { id: "comedor", label: "Comedor" },
+];
 
 function formatFechaLarga(fechaISO: string): string {
   const d = new Date(`${fechaISO}T00:00:00.000Z`);
@@ -70,13 +79,134 @@ function formatFechaLarga(fechaISO: string): string {
   });
 }
 
+function EnlaceOcupante({ o }: { o: OcupanteDia }) {
+  return (
+    <Link
+      href={`/centros/${o.centroId}?estancia=${o.estanciaId}&tab=participantes`}
+      className="font-medium text-brand-navy hover:underline"
+    >
+      {o.nombre}
+    </Link>
+  );
+}
+
+function VistaPorHabitacion({ habitaciones }: { habitaciones: HabitacionDia[] }) {
+  return (
+    <div className="flex flex-col gap-3">
+      {habitaciones.map((h) => (
+        <div key={h.id} className="rounded border border-gray-200 p-3">
+          <p className="text-sm font-medium text-gray-900">
+            {h.nombre}{" "}
+            <span className="font-normal text-gray-400">
+              ({h.ocupantes.length}/{h.capacidad})
+            </span>
+          </p>
+          {h.ocupantes.length === 0 ? (
+            <p className="mt-1 text-xs text-gray-400">Libre.</p>
+          ) : (
+            <ul className="mt-2 flex flex-col gap-1.5">
+              {h.ocupantes.map((o) => (
+                <li key={o.id} className="text-xs text-gray-600">
+                  <EnlaceOcupante o={o} /> · {o.rolLabel} · {o.centroNombre}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+      {habitaciones.length === 0 && (
+        <p className="text-sm text-gray-500">No hay habitaciones activas.</p>
+      )}
+    </div>
+  );
+}
+
+function VistaPorCliente({ ocupantes }: { ocupantes: OcupanteDia[] }) {
+  const porCliente = new Map<string, { centroNombre: string; items: OcupanteDia[] }>();
+  for (const o of ocupantes) {
+    const grupo = porCliente.get(o.centroId);
+    if (grupo) grupo.items.push(o);
+    else porCliente.set(o.centroId, { centroNombre: o.centroNombre, items: [o] });
+  }
+  const grupos = [...porCliente.values()].sort((a, b) =>
+    a.centroNombre.localeCompare(b.centroNombre)
+  );
+
+  return (
+    <div className="flex flex-col gap-3">
+      {grupos.map((g) => (
+        <div key={g.centroNombre} className="rounded border border-gray-200 p-3">
+          <p className="text-sm font-medium text-gray-900">
+            {g.centroNombre}{" "}
+            <span className="font-normal text-gray-400">({g.items.length})</span>
+          </p>
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {g.items.map((o) => (
+              <li key={o.id} className="text-xs text-gray-600">
+                <EnlaceOcupante o={o} /> · {o.rolLabel}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {grupos.length === 0 && <p className="text-sm text-gray-500">Nadie ese día.</p>}
+    </div>
+  );
+}
+
+function VistaComedor({ ocupantes }: { ocupantes: OcupanteDia[] }) {
+  const conNecesidades = ocupantes.filter((o) => o.alergias);
+  const sinNecesidades = ocupantes.filter((o) => !o.alergias);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-sm font-medium text-gray-900">Total para comer hoy: {ocupantes.length}</p>
+
+      <div>
+        <h3 className="text-sm font-medium text-rose-700">
+          Con alergias o necesidades especiales ({conNecesidades.length})
+        </h3>
+        {conNecesidades.length === 0 ? (
+          <p className="mt-1 text-xs text-gray-400">Ninguna registrada.</p>
+        ) : (
+          <ul className="mt-2 flex flex-col gap-2">
+            {conNecesidades.map((o) => (
+              <li key={o.id} className="rounded border border-rose-100 bg-rose-50 p-2 text-xs">
+                <p className="text-gray-800">
+                  <EnlaceOcupante o={o} /> · {o.rolLabel} · {o.centroNombre}
+                </p>
+                <p className="mt-0.5 font-medium text-rose-800">{o.alergias}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div>
+        <h3 className="text-sm font-medium text-gray-700">
+          Sin necesidades registradas ({sinNecesidades.length})
+        </h3>
+        <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">
+          {sinNecesidades.map((o) => (
+            <li key={o.id}>
+              <EnlaceOcupante o={o} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 function DetalleDia({ fecha }: { fecha: string }) {
   const [habitaciones, setHabitaciones] = useState<HabitacionDia[] | null>(null);
   const [error, setError] = useState<string>();
+  const [vista, setVista] = useState<Vista>("habitacion");
 
   useEffect(() => {
     setHabitaciones(null);
     setError(undefined);
+    setVista("habitacion");
     fetch(`/api/ocupacion/dia?fecha=${fecha}`)
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data) => setHabitaciones(data.habitaciones))
@@ -85,6 +215,7 @@ function DetalleDia({ fecha }: { fecha: string }) {
 
   const totalOcupados = habitaciones?.reduce((s, h) => s + h.ocupantes.length, 0) ?? 0;
   const totalCapacidad = habitaciones?.reduce((s, h) => s + h.capacidad, 0) ?? 0;
+  const ocupantes = habitaciones?.flatMap((h) => h.ocupantes) ?? [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -100,38 +231,27 @@ function DetalleDia({ fecha }: { fecha: string }) {
           <p className="text-sm font-medium text-gray-900">
             {totalOcupados}/{totalCapacidad} plazas ocupadas
           </p>
-          <div className="flex flex-col gap-3">
-            {habitaciones.map((h) => (
-              <div key={h.id} className="rounded border border-gray-200 p-3">
-                <p className="text-sm font-medium text-gray-900">
-                  {h.nombre}{" "}
-                  <span className="font-normal text-gray-400">
-                    ({h.ocupantes.length}/{h.capacidad})
-                  </span>
-                </p>
-                {h.ocupantes.length === 0 ? (
-                  <p className="mt-1 text-xs text-gray-400">Libre.</p>
-                ) : (
-                  <ul className="mt-2 flex flex-col gap-1.5">
-                    {h.ocupantes.map((o) => (
-                      <li key={o.id} className="text-xs text-gray-600">
-                        <Link
-                          href={`/centros/${o.centroId}?estancia=${o.estanciaId}&tab=participantes`}
-                          className="font-medium text-brand-navy hover:underline"
-                        >
-                          {o.nombre}
-                        </Link>{" "}
-                        · {o.rolLabel} · {o.centroNombre}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+
+          <div className="flex gap-1 border-b border-gray-200">
+            {VISTAS.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setVista(v.id)}
+                className={`px-3 py-1.5 text-xs font-medium ${
+                  vista === v.id
+                    ? "border-b-2 border-brand-navy text-brand-navy"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                {v.label}
+              </button>
             ))}
-            {habitaciones.length === 0 && (
-              <p className="text-sm text-gray-500">No hay habitaciones activas.</p>
-            )}
           </div>
+
+          {vista === "habitacion" && <VistaPorHabitacion habitaciones={habitaciones} />}
+          {vista === "cliente" && <VistaPorCliente ocupantes={ocupantes} />}
+          {vista === "comedor" && <VistaComedor ocupantes={ocupantes} />}
         </>
       )}
     </div>
