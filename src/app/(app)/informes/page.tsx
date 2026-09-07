@@ -5,6 +5,8 @@ import { getSession } from "@/lib/session";
 import { centroVisibilityFilter } from "@/lib/permissions";
 import { InformesTabs } from "./informes-tabs";
 import { BarraHorizontal } from "./barra-horizontal";
+import { ColumnasMensuales } from "./columnas-mensuales";
+import { CANAL_OPTIONS } from "@/lib/labels";
 
 // Una estancia cuenta como "contratada" (genera ingreso) a partir de que se
 // firma el contrato, inclusive las fases posteriores del viaje. Decisión de
@@ -22,6 +24,15 @@ const ESTADOS_CONTACTADOS_SIN_CONTRATAR = [
   "PRESUPUESTO_CONFIRMADO",
   "PERDIDO",
 ] as const;
+
+function TituloSeccion({ titulo, aclaracion }: { titulo: string; aclaracion?: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <h2 className="text-lg font-medium text-gray-900">{titulo}</h2>
+      {aclaracion && <span className="text-xs text-gray-500">{aclaracion}</span>}
+    </div>
+  );
+}
 
 function StatCard({
   label,
@@ -54,13 +65,19 @@ export default async function InformesPage() {
   if (!session) redirect("/login");
   const visibilidad = centroVisibilityFilter(session);
 
-  const [centrosCount, usuariosCount, estancias] = await Promise.all([
+  const [centrosCount, usuariosCount, estancias, centrosPorCanal] = await Promise.all([
     prisma.centro.count({ where: visibilidad }),
     prisma.user.count(),
     prisma.estancia.findMany({
       where: { centro: visibilidad },
-      select: { estado: true, presupuestoImporte: true, centro: { select: { pais: true } } },
+      select: {
+        estado: true,
+        presupuestoImporte: true,
+        createdAt: true,
+        centro: { select: { pais: true } },
+      },
     }),
+    prisma.centro.findMany({ where: visibilidad, select: { canalOrigen: true } }),
   ]);
 
   const ingresosGenerados = estancias
@@ -96,6 +113,49 @@ export default async function InformesPage() {
   const paisesOrdenados = [...porPais.entries()]
     .filter(([, importe]) => importe > 0)
     .sort((a, b) => b[1] - a[1]);
+
+  // Estancias por país (todas, no solo las que ya han generado ingreso):
+  // muestra de dónde viene el volumen, no solo el dinero.
+  const estanciasPorPaisMap = new Map<string, number>();
+  for (const e of estancias) {
+    estanciasPorPaisMap.set(e.centro.pais, (estanciasPorPaisMap.get(e.centro.pais) ?? 0) + 1);
+  }
+  const estanciasPorPais = [...estanciasPorPaisMap.entries()].sort((a, b) => b[1] - a[1]);
+
+  // Canal de origen de los clientes (de dónde llegan los leads).
+  const porCanal = CANAL_OPTIONS.map((canal) => ({
+    etiqueta: canal,
+    valor: centrosPorCanal.filter((c) => c.canalOrigen === canal).length,
+  }));
+
+  // Tendencia de captación: estancias creadas en cada uno de los últimos 12
+  // meses (mes en curso incluido). Ventana fija, no solo los meses con
+  // datos: un mes sin nada también es información (una caída se vería).
+  const ahora = new Date();
+  const meses = Array.from({ length: 12 }, (_, i) => {
+    const offset = 11 - i;
+    const inicio = new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth() - offset, 1));
+    const fin = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth() + 1, 0, 23, 59, 59));
+    return { inicio, fin };
+  });
+  const porMes = meses.map(({ inicio, fin }) => ({
+    etiqueta: inicio.toLocaleDateString("es-ES", { month: "short", year: "2-digit", timeZone: "UTC" }),
+    valor: estancias.filter((e) => e.createdAt >= inicio && e.createdAt <= fin).length,
+  }));
+  // Mismo eje de tiempo (mes de alta) que "Estancias captadas por mes", pero
+  // solo de las que llegaron a contratarse, para poder comparar volumen
+  // captado frente a ingreso captado mes a mes.
+  const ingresosPorMes = meses.map(({ inicio, fin }) => ({
+    etiqueta: inicio.toLocaleDateString("es-ES", { month: "short", year: "2-digit", timeZone: "UTC" }),
+    valor: estancias
+      .filter(
+        (e) =>
+          e.createdAt >= inicio &&
+          e.createdAt <= fin &&
+          (ESTADOS_CONTRATADOS as readonly string[]).includes(e.estado)
+      )
+      .reduce((total, e) => total + (e.presupuestoImporte ? Number(e.presupuestoImporte) : 0), 0),
+  }));
 
   return (
     <div className="flex flex-col gap-8">
@@ -186,7 +246,44 @@ export default async function InformesPage() {
         graficos={
           <div className="flex flex-col gap-8">
             <section>
-              <h2 className="text-lg font-medium text-gray-900">Estancias por estado</h2>
+              <TituloSeccion titulo="Estancias captadas por mes" aclaracion="Últimos 12 meses." />
+              <div className="mt-3 rounded border border-gray-200 bg-white p-4">
+                <ColumnasMensuales items={porMes} />
+              </div>
+            </section>
+
+            <section>
+              <TituloSeccion
+                titulo="Ingresos por mes"
+                aclaracion="Mismo mes de alta, solo estancias contratadas."
+              />
+              <div className="mt-3 rounded border border-gray-200 bg-white p-4">
+                <ColumnasMensuales items={ingresosPorMes} formatValor={formatEuros} />
+              </div>
+            </section>
+
+            <section>
+              <TituloSeccion titulo="Ganadas vs. perdidas" />
+              <div className="mt-3 rounded border border-gray-200 bg-white p-4">
+                <BarraHorizontal
+                  items={[
+                    { etiqueta: "Ganadas", valor: ganadas, color: "bg-green-600" },
+                    { etiqueta: "Perdidas", valor: perdidas, color: "bg-rose-600" },
+                  ]}
+                  formatValor={(v) => String(v)}
+                />
+              </div>
+            </section>
+
+            <section>
+              <TituloSeccion titulo="Canal de origen" />
+              <div className="mt-3 rounded border border-gray-200 bg-white p-4">
+                <BarraHorizontal items={porCanal} formatValor={(v) => String(v)} />
+              </div>
+            </section>
+
+            <section>
+              <TituloSeccion titulo="Estancias por estado" />
               <div className="mt-3 rounded border border-gray-200 bg-white p-4">
                 <BarraHorizontal
                   items={porEstado.map(({ estado, cantidad }) => ({
@@ -199,7 +296,20 @@ export default async function InformesPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-medium text-gray-900">Ingresos por país</h2>
+              <TituloSeccion titulo="Estancias por país" aclaracion="Todas, no solo las contratadas." />
+              <div className="mt-3 rounded border border-gray-200 bg-white p-4">
+                <BarraHorizontal
+                  items={estanciasPorPais.map(([pais, cantidad]) => ({
+                    etiqueta: pais,
+                    valor: cantidad,
+                  }))}
+                  formatValor={(v) => String(v)}
+                />
+              </div>
+            </section>
+
+            <section>
+              <TituloSeccion titulo="Ingresos por país" />
               <div className="mt-3 rounded border border-gray-200 bg-white p-4">
                 <BarraHorizontal
                   items={paisesOrdenados.map(([pais, importe]) => ({

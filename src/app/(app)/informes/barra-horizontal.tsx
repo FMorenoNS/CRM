@@ -6,7 +6,7 @@ export function BarraHorizontal({
   items,
   formatValor,
 }: {
-  items: { etiqueta: string; valor: number }[];
+  items: { etiqueta: string; valor: number; color?: string }[];
   formatValor: (v: number) => string;
 }) {
   const max = Math.max(...items.map((i) => i.valor), 1);
@@ -20,7 +20,7 @@ export function BarraHorizontal({
           </span>
           <div className="h-3.5 flex-1 rounded-sm bg-gray-50">
             <div
-              className="h-full rounded-r-[4px] bg-brand-navy"
+              className={`h-full rounded-r-[4px] ${i.color ?? "bg-brand-navy"}`}
               style={{ width: `${Math.max((i.valor / max) * 100, i.valor > 0 ? 2 : 0)}%` }}
               title={`${i.etiqueta}: ${formatValor(i.valor)}`}
             />
