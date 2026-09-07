@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { ESTADO_LABELS, TODOS_ESTADOS } from "@/lib/labels";
 import { getSession } from "@/lib/session";
 import { centroVisibilityFilter } from "@/lib/permissions";
+import { InformesTabs } from "./informes-tabs";
+import { BarraHorizontal } from "./barra-horizontal";
 
 // Una estancia cuenta como "contratada" (genera ingreso) a partir de que se
 // firma el contrato, inclusive las fases posteriores del viaje. Decisión de
@@ -52,8 +54,9 @@ export default async function InformesPage() {
   if (!session) redirect("/login");
   const visibilidad = centroVisibilityFilter(session);
 
-  const [centrosCount, estancias] = await Promise.all([
+  const [centrosCount, usuariosCount, estancias] = await Promise.all([
     prisma.centro.count({ where: visibilidad }),
+    prisma.user.count(),
     prisma.estancia.findMany({
       where: { centro: visibilidad },
       select: { estado: true, presupuestoImporte: true, centro: { select: { pais: true } } },
@@ -104,75 +107,112 @@ export default async function InformesPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
         <StatCard
           label="Ingresos generados"
           value={formatEuros(ingresosGenerados)}
           detalle="Estancias con contrato firmado"
         />
         <StatCard label="Clientes captados" value={String(centrosCount)} />
+        <StatCard label="Estancias totales" value={String(estancias.length)} />
         <StatCard
           label="Contactados sin contratar"
           value={String(contactadosSinContratar)}
           detalle="En gestión o perdidos, sin llegar a contrato"
         />
         <StatCard label="Tasa de conversión" value={`${conversion}%`} />
+        <StatCard label="Usuarios totales" value={String(usuariosCount)} />
       </div>
 
-      <section>
-        <h2 className="text-lg font-medium text-gray-900">Embudo e ingresos por estado</h2>
-        <div className="mt-3 overflow-hidden rounded border border-gray-200 bg-white">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-gray-500">
-              <tr>
-                <th className="px-4 py-2">Estado</th>
-                <th className="px-4 py-2 text-right">Estancias</th>
-                <th className="px-4 py-2 text-right">Presupuesto</th>
-              </tr>
-            </thead>
-            <tbody>
-              {porEstado.map(({ estado, cantidad, importe }) => (
-                <tr key={estado} className="border-t border-gray-100">
-                  <td className="px-4 py-2">{ESTADO_LABELS[estado]}</td>
-                  <td className="px-4 py-2 text-right">{cantidad}</td>
-                  <td className="px-4 py-2 text-right">
-                    {importe > 0 ? formatEuros(importe) : "–"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <InformesTabs
+        numeros={
+          <div className="flex flex-col gap-8">
+            <section>
+              <h2 className="text-lg font-medium text-gray-900">Embudo e ingresos por estado</h2>
+              <div className="mt-3 overflow-hidden rounded border border-gray-200 bg-white">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-left text-gray-500">
+                    <tr>
+                      <th className="px-4 py-2">Estado</th>
+                      <th className="px-4 py-2 text-right">Estancias</th>
+                      <th className="px-4 py-2 text-right">Presupuesto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {porEstado.map(({ estado, cantidad, importe }) => (
+                      <tr key={estado} className="border-t border-gray-100">
+                        <td className="px-4 py-2">{ESTADO_LABELS[estado]}</td>
+                        <td className="px-4 py-2 text-right">{cantidad}</td>
+                        <td className="px-4 py-2 text-right">
+                          {importe > 0 ? formatEuros(importe) : "–"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
 
-      <section>
-        <h2 className="text-lg font-medium text-gray-900">Ingresos por país</h2>
-        <div className="mt-3 overflow-hidden rounded border border-gray-200 bg-white">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-gray-500">
-              <tr>
-                <th className="px-4 py-2">País</th>
-                <th className="px-4 py-2 text-right">Ingresos</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paisesOrdenados.map(([pais, importe]) => (
-                <tr key={pais} className="border-t border-gray-100">
-                  <td className="px-4 py-2">{pais}</td>
-                  <td className="px-4 py-2 text-right">{formatEuros(importe)}</td>
-                </tr>
-              ))}
-              {paisesOrdenados.length === 0 && (
-                <tr>
-                  <td colSpan={2} className="px-4 py-6 text-center text-gray-500">
-                    Todavía no hay ningún contrato firmado con presupuesto.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+            <section>
+              <h2 className="text-lg font-medium text-gray-900">Ingresos por país</h2>
+              <div className="mt-3 overflow-hidden rounded border border-gray-200 bg-white">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-left text-gray-500">
+                    <tr>
+                      <th className="px-4 py-2">País</th>
+                      <th className="px-4 py-2 text-right">Ingresos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paisesOrdenados.map(([pais, importe]) => (
+                      <tr key={pais} className="border-t border-gray-100">
+                        <td className="px-4 py-2">{pais}</td>
+                        <td className="px-4 py-2 text-right">{formatEuros(importe)}</td>
+                      </tr>
+                    ))}
+                    {paisesOrdenados.length === 0 && (
+                      <tr>
+                        <td colSpan={2} className="px-4 py-6 text-center text-gray-500">
+                          Todavía no hay ningún contrato firmado con presupuesto.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        }
+        graficos={
+          <div className="flex flex-col gap-8">
+            <section>
+              <h2 className="text-lg font-medium text-gray-900">Estancias por estado</h2>
+              <div className="mt-3 rounded border border-gray-200 bg-white p-4">
+                <BarraHorizontal
+                  items={porEstado.map(({ estado, cantidad }) => ({
+                    etiqueta: ESTADO_LABELS[estado],
+                    valor: cantidad,
+                  }))}
+                  formatValor={(v) => String(v)}
+                />
+              </div>
+            </section>
+
+            <section>
+              <h2 className="text-lg font-medium text-gray-900">Ingresos por país</h2>
+              <div className="mt-3 rounded border border-gray-200 bg-white p-4">
+                <BarraHorizontal
+                  items={paisesOrdenados.map(([pais, importe]) => ({
+                    etiqueta: pais,
+                    valor: importe,
+                  }))}
+                  formatValor={formatEuros}
+                />
+              </div>
+            </section>
+          </div>
+        }
+      />
     </div>
   );
 }
