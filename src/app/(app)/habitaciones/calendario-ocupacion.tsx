@@ -34,8 +34,8 @@ function diaSemanaISO(fecha: Date): number {
 function tonoOcupacion(ocupados: number, capacidad: number): string {
   if (capacidad === 0) return "bg-gray-50 text-gray-400";
   const ratio = ocupados / capacidad;
-  if (ratio >= 1) return "bg-rose-100 text-rose-800";
-  if (ratio >= 0.75) return "bg-amber-100 text-amber-800";
+  if (ratio > 0.9) return "bg-rose-100 text-rose-800";
+  if (ratio > 0.5) return "bg-amber-100 text-amber-800";
   return "bg-green-50 text-green-800";
 }
 
