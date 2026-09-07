@@ -95,6 +95,12 @@ export async function POST(request: Request) {
         d.numeroAlumnos !== ""
           ? Number(d.numeroAlumnos)
           : null,
+      numeroProfesores:
+        d.numeroProfesores !== undefined &&
+        d.numeroProfesores !== null &&
+        d.numeroProfesores !== ""
+          ? Number(d.numeroProfesores)
+          : null,
       edadGrupo: d.edadGrupo || null,
       fechaInicio: d.fechaInicio ? new Date(d.fechaInicio) : null,
       fechaFin: d.fechaFin ? new Date(d.fechaFin) : null,

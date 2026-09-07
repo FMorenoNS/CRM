@@ -166,6 +166,7 @@ export function CentroCreateForm() {
       tipoParticipante: (d.get("tipoParticipante") as string) || "ALUMNOS",
       provincia: (d.get("provincia") as string) ?? "",
       numeroAlumnos: (d.get("numeroAlumnos") as string) ?? "",
+      numeroProfesores: (d.get("numeroProfesores") as string) ?? "",
       edadGrupo: (d.get("edadGrupo") as string) ?? "",
       fechaInicio: (d.get("fechaInicio") as string) ?? "",
       presupuestoImporte: (d.get("presupuestoImporte") as string) ?? "",
@@ -288,6 +289,14 @@ export function CentroCreateForm() {
             min="0"
             step="1"
             placeholder="Número de alumnos"
+            className={inputCls}
+          />
+          <input
+            name="numeroProfesores"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="Número de profesores"
             className={inputCls}
           />
           <input name="fechaInicio" type="date" className={inputCls} />

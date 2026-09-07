@@ -19,6 +19,7 @@ type DefaultValues = {
   centroReceptor?: string;
   provincia?: string | null;
   numeroAlumnos?: string | null;
+  numeroProfesores?: string | null;
   edadGrupo?: string | null;
   fechaInicio?: string | null;
   fechaFin?: string | null;
@@ -37,6 +38,7 @@ function readValues(form: HTMLFormElement) {
     centroReceptor: (data.get("centroReceptor") as string) || "Granada",
     provincia: (data.get("provincia") as string) ?? "",
     numeroAlumnos: (data.get("numeroAlumnos") as string) ?? "",
+    numeroProfesores: (data.get("numeroProfesores") as string) ?? "",
     edadGrupo: (data.get("edadGrupo") as string) ?? "",
     fechaInicio: (data.get("fechaInicio") as string) ?? "",
     fechaFin: (data.get("fechaFin") as string) ?? "",
@@ -230,20 +232,37 @@ export function EstanciaForm({
         </div>
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="numeroAlumnos" className="text-sm font-medium text-gray-700">
-          Número de alumnos
-        </label>
-        <input
-          id="numeroAlumnos"
-          name="numeroAlumnos"
-          type="number"
-          min="0"
-          step="1"
-          disabled={readOnly}
-          defaultValue={defaultValues?.numeroAlumnos ?? ""}
-          className={inputCls}
-        />
+      <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col gap-1">
+          <label htmlFor="numeroAlumnos" className="text-sm font-medium text-gray-700">
+            Número de alumnos
+          </label>
+          <input
+            id="numeroAlumnos"
+            name="numeroAlumnos"
+            type="number"
+            min="0"
+            step="1"
+            disabled={readOnly}
+            defaultValue={defaultValues?.numeroAlumnos ?? ""}
+            className={inputCls}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="numeroProfesores" className="text-sm font-medium text-gray-700">
+            Número de profesores
+          </label>
+          <input
+            id="numeroProfesores"
+            name="numeroProfesores"
+            type="number"
+            min="0"
+            step="1"
+            disabled={readOnly}
+            defaultValue={defaultValues?.numeroProfesores ?? ""}
+            className={inputCls}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

@@ -133,14 +133,76 @@ function ParticipanteRow({
   );
 }
 
+function AutocompletarPanel({
+  estanciaId,
+  necesarios,
+  totalLibres,
+}: {
+  estanciaId: string;
+  necesarios: { alumnos: number; profesores: number };
+  totalLibres: number;
+}) {
+  const router = useRouter();
+  const [error, setError] = useState<string>();
+  const [isPending, setIsPending] = useState(false);
+  const total = necesarios.alumnos + necesarios.profesores;
+
+  async function autocompletar() {
+    setError(undefined);
+    setIsPending(true);
+    try {
+      const res = await fetch(`/api/estancias/${estanciaId}/participantes/autocompletar`, {
+        method: "POST",
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(result.error ?? "No se pudo autocompletar.");
+        return;
+      }
+      router.refresh();
+    } catch {
+      setError("No se pudo conectar con el servidor.");
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  return (
+    <div className="mb-3 flex flex-col gap-2 rounded border border-dashed border-gray-300 bg-gray-50 p-3 text-sm">
+      <p className="text-gray-700">
+        La estancia pide {necesarios.alumnos} alumno(s) y {necesarios.profesores}{" "}
+        profesor(es) ({total} en total). Hay {totalLibres} plaza(s) libre(s) en
+        esas fechas.
+      </p>
+      <button
+        type="button"
+        onClick={autocompletar}
+        disabled={isPending}
+        className="self-start rounded border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+      >
+        {isPending ? "Generando..." : "Autocompletar y repartir en habitaciones"}
+      </button>
+      {error && (
+        <p className="text-red-600" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function Participantes({
   estanciaId,
   participantes,
   habitaciones,
+  necesarios,
+  totalLibres,
 }: {
   estanciaId: string;
   participantes: ParticipanteItem[];
   habitaciones: HabitacionOption[];
+  necesarios: { alumnos: number; profesores: number };
+  totalLibres: number;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string>();
@@ -177,8 +239,18 @@ export function Participantes({
     }
   }
 
+  const necesitaAutocompletar =
+    participantes.length === 0 && necesarios.alumnos + necesarios.profesores > 0;
+
   return (
     <div>
+      {necesitaAutocompletar && (
+        <AutocompletarPanel
+          estanciaId={estanciaId}
+          necesarios={necesarios}
+          totalLibres={totalLibres}
+        />
+      )}
       <ul className="flex flex-col gap-2">
         {participantes.map((p) => (
           <ParticipanteRow key={p.id} participante={p} habitaciones={habitaciones} />

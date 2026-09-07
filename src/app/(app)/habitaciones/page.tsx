@@ -1,17 +1,43 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { getOcupacionMensual } from "@/lib/ocupacion";
 import { HabitacionesClient, type HabitacionRow } from "./habitaciones-client";
+import { CalendarioOcupacion } from "./calendario-ocupacion";
 
-export default async function HabitacionesPage() {
+function mesActual(): { anio: number; mes: number } {
+  const ahora = new Date();
+  return { anio: ahora.getUTCFullYear(), mes: ahora.getUTCMonth() + 1 };
+}
+
+export default async function HabitacionesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ mes?: string }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.role !== "ADMIN") redirect("/");
 
-  const habitacionesRaw = await prisma.habitacion.findMany({
-    orderBy: { nombre: "asc" },
-    include: { _count: { select: { participantes: true } } },
-  });
+  const { mes: mesParam } = await searchParams;
+  const defecto = mesActual();
+  let anio = defecto.anio;
+  let mes = defecto.mes;
+  if (mesParam && /^\d{4}-\d{2}$/.test(mesParam)) {
+    const [a, m] = mesParam.split("-").map(Number);
+    if (m >= 1 && m <= 12) {
+      anio = a;
+      mes = m;
+    }
+  }
+
+  const [habitacionesRaw, ocupacion] = await Promise.all([
+    prisma.habitacion.findMany({
+      orderBy: { nombre: "asc" },
+      include: { _count: { select: { participantes: true } } },
+    }),
+    getOcupacionMensual(anio, mes),
+  ]);
 
   const habitaciones: HabitacionRow[] = habitacionesRaw.map((h) => ({
     id: h.id,
@@ -31,7 +57,20 @@ export default async function HabitacionesPage() {
           estancia.
         </p>
       </div>
-      <HabitacionesClient habitaciones={habitaciones} />
+
+      <section>
+        <h2 className="text-lg font-medium text-gray-900">Ocupación</h2>
+        <div className="mt-3">
+          <CalendarioOcupacion anio={anio} mes={mes} ocupacion={ocupacion} />
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-medium text-gray-900">Catálogo</h2>
+        <div className="mt-3">
+          <HabitacionesClient habitaciones={habitaciones} />
+        </div>
+      </section>
     </div>
   );
 }

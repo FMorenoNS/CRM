@@ -114,6 +114,14 @@ export async function EstanciaPanel({
       plazasLibres: await plazasLibres(h.id, estancia.fechaInicio, estancia.fechaFin),
     }))
   );
+  const totalLibres = habitacionesDisponibles.reduce(
+    (suma, h) => suma + Math.max(0, h.plazasLibres),
+    0
+  );
+  const necesarios = {
+    alumnos: estancia.numeroAlumnos ?? 0,
+    profesores: estancia.numeroProfesores ?? 0,
+  };
 
   return (
     <div className="flex flex-col gap-8 rounded-lg border border-gray-200 bg-white p-6">
@@ -148,6 +156,10 @@ export async function EstanciaPanel({
               numeroAlumnos:
                 estancia.numeroAlumnos !== null
                   ? String(estancia.numeroAlumnos)
+                  : "",
+              numeroProfesores:
+                estancia.numeroProfesores !== null
+                  ? String(estancia.numeroProfesores)
                   : "",
               edadGrupo: estancia.edadGrupo,
               fechaInicio: toDateInput(estancia.fechaInicio),
@@ -198,6 +210,8 @@ export async function EstanciaPanel({
             estanciaId={estancia.id}
             participantes={participantes}
             habitaciones={habitacionesDisponibles}
+            necesarios={necesarios}
+            totalLibres={totalLibres}
           />
         </div>
       </section>
