@@ -169,6 +169,14 @@ export const participanteSchema = z.object({
   // profesores no comparten habitación" en un caso concreto. La capacidad
   // física de la habitación se sigue comprobando siempre, esto no la salta.
   forzarMezcla: z.boolean().optional(),
+  // Datos sensibles: opcionales siempre (se rellenan después de crear el
+  // participante, no en el alta rápida).
+  fechaNacimiento: z.string().trim().optional().nullable().or(z.literal("")),
+  alergias: z.string().trim().optional().nullable(),
+  contactoEmergenciaNombre: z.string().trim().optional().nullable(),
+  contactoEmergenciaTelefono: z.string().trim().optional().nullable(),
+  autorizacionRecibida: z.boolean().optional(),
+  seguroRecibido: z.boolean().optional(),
 });
 
 export const updateParticipanteSchema = participanteSchema.partial();

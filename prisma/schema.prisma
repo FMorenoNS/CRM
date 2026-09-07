@@ -201,6 +201,17 @@ model Participante {
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
+  // Datos sensibles (antes pausados a propósito): lo mínimo que pide el
+  // brief de residencia para gestionar la estancia con seguridad, nada
+  // "por si acaso". "Menor de edad" no se guarda como campo: se calcula a
+  // partir de fechaNacimiento y la fecha de inicio de la estancia.
+  fechaNacimiento           DateTime?
+  alergias                  String?
+  contactoEmergenciaNombre  String?
+  contactoEmergenciaTelefono String?
+  autorizacionRecibida      Boolean  @default(false)
+  seguroRecibido            Boolean  @default(false)
+
   @@index([estanciaId])
   @@index([habitacionId])
 }

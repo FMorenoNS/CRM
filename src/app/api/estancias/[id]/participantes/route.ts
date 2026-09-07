@@ -73,6 +73,14 @@ export async function POST(
       nombre: parsed.data.nombre,
       rol: parsed.data.rol,
       habitacionId,
+      fechaNacimiento: parsed.data.fechaNacimiento
+        ? new Date(parsed.data.fechaNacimiento)
+        : null,
+      alergias: parsed.data.alergias || null,
+      contactoEmergenciaNombre: parsed.data.contactoEmergenciaNombre || null,
+      contactoEmergenciaTelefono: parsed.data.contactoEmergenciaTelefono || null,
+      autorizacionRecibida: parsed.data.autorizacionRecibida ?? false,
+      seguroRecibido: parsed.data.seguroRecibido ?? false,
     },
   });
 

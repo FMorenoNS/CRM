@@ -39,11 +39,39 @@ export async function PATCH(
     return NextResponse.json({ error: "Nada que cambiar." }, { status: 400 });
   }
 
-  const data: { nombre?: string; rol?: "ALUMNOS" | "PROFESORES"; habitacionId?: string | null } = {};
+  const data: {
+    nombre?: string;
+    rol?: "ALUMNOS" | "PROFESORES";
+    habitacionId?: string | null;
+    fechaNacimiento?: Date | null;
+    alergias?: string | null;
+    contactoEmergenciaNombre?: string | null;
+    contactoEmergenciaTelefono?: string | null;
+    autorizacionRecibida?: boolean;
+    seguroRecibido?: boolean;
+  } = {};
   if (parsed.data.nombre !== undefined) data.nombre = parsed.data.nombre;
   if (parsed.data.rol !== undefined) data.rol = parsed.data.rol;
   if (parsed.data.habitacionId !== undefined) {
     data.habitacionId = parsed.data.habitacionId || null;
+  }
+  if (parsed.data.fechaNacimiento !== undefined) {
+    data.fechaNacimiento = parsed.data.fechaNacimiento
+      ? new Date(parsed.data.fechaNacimiento)
+      : null;
+  }
+  if (parsed.data.alergias !== undefined) data.alergias = parsed.data.alergias || null;
+  if (parsed.data.contactoEmergenciaNombre !== undefined) {
+    data.contactoEmergenciaNombre = parsed.data.contactoEmergenciaNombre || null;
+  }
+  if (parsed.data.contactoEmergenciaTelefono !== undefined) {
+    data.contactoEmergenciaTelefono = parsed.data.contactoEmergenciaTelefono || null;
+  }
+  if (parsed.data.autorizacionRecibida !== undefined) {
+    data.autorizacionRecibida = parsed.data.autorizacionRecibida;
+  }
+  if (parsed.data.seguroRecibido !== undefined) {
+    data.seguroRecibido = parsed.data.seguroRecibido;
   }
 
   // Si al terminar el cambio el participante queda en una habitación (ya

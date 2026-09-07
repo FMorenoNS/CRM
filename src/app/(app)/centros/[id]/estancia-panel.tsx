@@ -107,6 +107,12 @@ export async function buildEstanciaBloques({
     rol: p.rol,
     habitacionId: p.habitacionId,
     habitacionNombre: p.habitacion?.nombre ?? null,
+    fechaNacimiento: p.fechaNacimiento ? p.fechaNacimiento.toISOString().slice(0, 10) : null,
+    alergias: p.alergias,
+    contactoEmergenciaNombre: p.contactoEmergenciaNombre,
+    contactoEmergenciaTelefono: p.contactoEmergenciaTelefono,
+    autorizacionRecibida: p.autorizacionRecibida,
+    seguroRecibido: p.seguroRecibido,
   }));
 
   const habitacionesActivas = await prisma.habitacion.findMany({
@@ -219,6 +225,7 @@ export async function buildEstanciaBloques({
         estanciaId={estancia.id}
         participantes={participantes}
         habitaciones={habitacionesDisponibles}
+        estanciaFechaInicio={toDateInput(estancia.fechaInicio) || null}
         necesarios={necesarios}
         totalLibres={totalLibres}
       />
