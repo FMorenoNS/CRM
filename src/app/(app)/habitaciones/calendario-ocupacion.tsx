@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import type { OcupacionMensual } from "@/lib/ocupacion";
+import { SidePanel } from "@/app/(app)/side-panel";
 
 const MESES = [
   "enero",
@@ -39,6 +43,101 @@ function tonoOcupacion(ocupados: number, capacidad: number): string {
   return "bg-green-50 text-green-800";
 }
 
+type OcupanteDia = {
+  id: string;
+  nombre: string;
+  rolLabel: string;
+  centroId: string;
+  centroNombre: string;
+  estanciaId: string;
+};
+
+type HabitacionDia = {
+  id: string;
+  nombre: string;
+  capacidad: number;
+  ocupantes: OcupanteDia[];
+};
+
+function formatFechaLarga(fechaISO: string): string {
+  const d = new Date(`${fechaISO}T00:00:00.000Z`);
+  return d.toLocaleDateString("es-ES", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function DetalleDia({ fecha }: { fecha: string }) {
+  const [habitaciones, setHabitaciones] = useState<HabitacionDia[] | null>(null);
+  const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    setHabitaciones(null);
+    setError(undefined);
+    fetch(`/api/ocupacion/dia?fecha=${fecha}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => setHabitaciones(data.habitaciones))
+      .catch(() => setError("No se pudo cargar el detalle de ese día."));
+  }, [fecha]);
+
+  const totalOcupados = habitaciones?.reduce((s, h) => s + h.ocupantes.length, 0) ?? 0;
+  const totalCapacidad = habitaciones?.reduce((s, h) => s + h.capacidad, 0) ?? 0;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-sm capitalize text-gray-600">{formatFechaLarga(fecha)}</p>
+      {error && (
+        <p className="text-sm text-red-600" role="alert">
+          {error}
+        </p>
+      )}
+      {!habitaciones && !error && <p className="text-sm text-gray-500">Cargando…</p>}
+      {habitaciones && (
+        <>
+          <p className="text-sm font-medium text-gray-900">
+            {totalOcupados}/{totalCapacidad} plazas ocupadas
+          </p>
+          <div className="flex flex-col gap-3">
+            {habitaciones.map((h) => (
+              <div key={h.id} className="rounded border border-gray-200 p-3">
+                <p className="text-sm font-medium text-gray-900">
+                  {h.nombre}{" "}
+                  <span className="font-normal text-gray-400">
+                    ({h.ocupantes.length}/{h.capacidad})
+                  </span>
+                </p>
+                {h.ocupantes.length === 0 ? (
+                  <p className="mt-1 text-xs text-gray-400">Libre.</p>
+                ) : (
+                  <ul className="mt-2 flex flex-col gap-1.5">
+                    {h.ocupantes.map((o) => (
+                      <li key={o.id} className="text-xs text-gray-600">
+                        <Link
+                          href={`/centros/${o.centroId}?estancia=${o.estanciaId}&tab=participantes`}
+                          className="font-medium text-brand-navy hover:underline"
+                        >
+                          {o.nombre}
+                        </Link>{" "}
+                        · {o.rolLabel} · {o.centroNombre}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+            {habitaciones.length === 0 && (
+              <p className="text-sm text-gray-500">No hay habitaciones activas.</p>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function CalendarioOcupacion({
   anio,
   mes,
@@ -48,6 +147,7 @@ export function CalendarioOcupacion({
   mes: number;
   ocupacion: OcupacionMensual;
 }) {
+  const [diaSeleccionado, setDiaSeleccionado] = useState<string | null>(null);
   const primerDia = new Date(Date.UTC(anio, mes - 1, 1));
   const huecosIniciales = diaSemanaISO(primerDia);
   const celdas: (typeof ocupacion.dias[number] | null)[] = [
@@ -88,9 +188,11 @@ export function CalendarioOcupacion({
           dia === null ? (
             <div key={`vacio-${i}`} />
           ) : (
-            <div
+            <button
               key={dia.fecha}
-              className={`rounded px-1 py-2 text-center text-xs ${tonoOcupacion(
+              type="button"
+              onClick={() => setDiaSeleccionado(dia.fecha)}
+              className={`rounded px-1 py-2 text-center text-xs hover:ring-2 hover:ring-brand-navy/40 ${tonoOcupacion(
                 dia.ocupados,
                 ocupacion.capacidadTotal
               )}`}
@@ -100,10 +202,18 @@ export function CalendarioOcupacion({
               <p>
                 {dia.ocupados}/{ocupacion.capacidadTotal}
               </p>
-            </div>
+            </button>
           )
         )}
       </div>
+
+      <SidePanel
+        open={diaSeleccionado !== null}
+        onClose={() => setDiaSeleccionado(null)}
+        title="Ocupación del día"
+      >
+        {diaSeleccionado && <DetalleDia fecha={diaSeleccionado} />}
+      </SidePanel>
     </div>
   );
 }
