@@ -81,7 +81,7 @@ export default async function InformesPage() {
       select: {
         estado: true,
         presupuestoImporte: true,
-        createdAt: true,
+        fechaInicio: true,
         centro: { select: { pais: true } },
       },
     }),
@@ -136,9 +136,12 @@ export default async function InformesPage() {
     valor: centrosPorCanal.filter((c) => c.canalOrigen === canal).length,
   }));
 
-  // Tendencia de captación: estancias creadas en cada uno de los últimos 12
-  // meses (mes en curso incluido). Ventana fija, no solo los meses con
-  // datos: un mes sin nada también es información (una caída se vería).
+  // Tendencia de captación: estancias cuyo viaje cae en cada uno de los
+  // últimos 12 meses (mes en curso incluido), por fecha de inicio de la
+  // estancia (no por cuándo se dio de alta en el CRM). Ventana fija, no solo
+  // los meses con datos: un mes sin nada también es información (una caída
+  // se vería). Las estancias sin fecha de inicio todavía no cuentan en
+  // ningún mes.
   const ahora = new Date();
   const meses = Array.from({ length: 12 }, (_, i) => {
     const offset = 11 - i;
@@ -148,18 +151,20 @@ export default async function InformesPage() {
   });
   const porMes = meses.map(({ inicio, fin }) => ({
     etiqueta: inicio.toLocaleDateString("es-ES", { month: "short", year: "2-digit", timeZone: "UTC" }),
-    valor: estancias.filter((e) => e.createdAt >= inicio && e.createdAt <= fin).length,
+    valor: estancias.filter((e) => e.fechaInicio && e.fechaInicio >= inicio && e.fechaInicio <= fin)
+      .length,
   }));
-  // Mismo eje de tiempo (mes de alta) que "Estancias captadas por mes", pero
-  // solo de las que llegaron a contratarse, para poder comparar volumen
-  // captado frente a ingreso captado mes a mes.
+  // Mismo eje de tiempo (fecha de la estancia) que "Estancias captadas por
+  // mes", pero solo de las que llegaron a contratarse, para poder comparar
+  // volumen captado frente a ingreso captado mes a mes.
   const ingresosPorMes = meses.map(({ inicio, fin }) => ({
     etiqueta: inicio.toLocaleDateString("es-ES", { month: "short", year: "2-digit", timeZone: "UTC" }),
     valor: estancias
       .filter(
         (e) =>
-          e.createdAt >= inicio &&
-          e.createdAt <= fin &&
+          e.fechaInicio &&
+          e.fechaInicio >= inicio &&
+          e.fechaInicio <= fin &&
           (ESTADOS_CONTRATADOS as readonly string[]).includes(e.estado)
       )
       .reduce((total, e) => total + (e.presupuestoImporte ? Number(e.presupuestoImporte) : 0), 0),
@@ -254,7 +259,10 @@ export default async function InformesPage() {
         graficos={
           <div className="flex flex-col gap-8">
             <section>
-              <TituloSeccion titulo="Estancias captadas por mes" aclaracion="Últimos 12 meses." />
+              <TituloSeccion
+                titulo="Estancias captadas por mes"
+                aclaracion="Últimos 12 meses, por fecha de la estancia."
+              />
               <div className="mt-3 rounded border border-gray-200 bg-white p-4">
                 <ColumnasMensuales items={porMes} />
               </div>
@@ -263,7 +271,7 @@ export default async function InformesPage() {
             <section>
               <TituloSeccion
                 titulo="Ingresos por mes"
-                aclaracion="Mismo mes de alta, solo estancias contratadas."
+                aclaracion="Por fecha de la estancia, solo estancias contratadas."
               />
               <div className="mt-3 rounded border border-gray-200 bg-white p-4">
                 <ColumnasMensuales items={ingresosPorMes} formatValor={formatEuros} />
