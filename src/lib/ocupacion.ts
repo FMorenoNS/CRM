@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
+import { ESTADOS_CONTRATADOS } from "@/lib/labels";
 
-export type OcupacionDia = { fecha: string; ocupados: number };
+export type OcupacionDia = { fecha: string; ocupados: number; reservados: number };
 
 export type OcupacionMensual = {
   capacidadTotal: number;
@@ -9,7 +10,9 @@ export type OcupacionMensual = {
 
 // Ocupación día a día de toda la residencia en un mes: cuenta, para cada
 // día, cuántos participantes tienen una habitación asignada cuya estancia
-// cubre ese día. La capacidad total es la suma de las habitaciones activas
+// cubre ese día, separando confirmados (estancia en ESTADOS_CONTRATADOS) de
+// reservados (todavía en pipeline, plaza no confirmada del todo). Perdido
+// no cuenta nunca. La capacidad total es la suma de las habitaciones activas
 // (no varía día a día: no hay altas/bajas de habitación por fecha).
 export async function getOcupacionMensual(
   anio: number,
@@ -30,20 +33,28 @@ export async function getOcupacionMensual(
   const participantes = await prisma.participante.findMany({
     where: {
       habitacionId: { not: null },
-      estancia: { fechaInicio: { lte: finMes }, fechaFin: { gte: inicioMes } },
+      estancia: {
+        fechaInicio: { lte: finMes },
+        fechaFin: { gte: inicioMes },
+        estado: { not: "PERDIDO" },
+      },
     },
-    select: { estancia: { select: { fechaInicio: true, fechaFin: true } } },
+    select: { estancia: { select: { fechaInicio: true, fechaFin: true, estado: true } } },
   });
 
   const dias: OcupacionDia[] = [];
   for (let d = 1; d <= numDias; d++) {
     const fecha = new Date(Date.UTC(anio, mes - 1, d));
-    const ocupados = participantes.filter((p) => {
-      const { fechaInicio, fechaFin } = p.estancia;
-      if (!fechaInicio || !fechaFin) return false;
-      return fechaInicio <= fecha && fechaFin >= fecha;
-    }).length;
-    dias.push({ fecha: fecha.toISOString().slice(0, 10), ocupados });
+    let ocupados = 0;
+    let reservados = 0;
+    for (const p of participantes) {
+      const { fechaInicio, fechaFin, estado } = p.estancia;
+      if (!fechaInicio || !fechaFin) continue;
+      if (fechaInicio > fecha || fechaFin < fecha) continue;
+      if ((ESTADOS_CONTRATADOS as readonly string[]).includes(estado)) ocupados++;
+      else reservados++;
+    }
+    dias.push({ fecha: fecha.toISOString().slice(0, 10), ocupados, reservados });
   }
 
   return { capacidadTotal, dias };

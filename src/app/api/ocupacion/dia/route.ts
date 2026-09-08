@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiAdmin } from "@/lib/api-auth";
-import { PARTICIPANTE_LABELS } from "@/lib/labels";
+import { PARTICIPANTE_LABELS, ESTADOS_CONTRATADOS } from "@/lib/labels";
 
 // Detalle completo de un día concreto para el calendario de ocupación de
 // /habitaciones (solo ADMIN, igual que esa página): qué habitaciones hay,
@@ -26,7 +26,11 @@ export async function GET(request: Request) {
     prisma.participante.findMany({
       where: {
         habitacionId: { not: null },
-        estancia: { fechaInicio: { lte: fecha }, fechaFin: { gte: fecha } },
+        estancia: {
+          fechaInicio: { lte: fecha },
+          fechaFin: { gte: fecha },
+          estado: { not: "PERDIDO" },
+        },
       },
       select: {
         id: true,
@@ -35,7 +39,7 @@ export async function GET(request: Request) {
         habitacionId: true,
         estanciaId: true,
         alergias: true,
-        estancia: { select: { centro: { select: { id: true, nombre: true } } } },
+        estancia: { select: { estado: true, centro: { select: { id: true, nombre: true } } } },
       },
     }),
   ]);
@@ -55,6 +59,7 @@ export async function GET(request: Request) {
         centroNombre: p.estancia.centro.nombre,
         estanciaId: p.estanciaId,
         alergias: p.alergias,
+        confirmado: (ESTADOS_CONTRATADOS as readonly string[]).includes(p.estancia.estado),
       })),
   }));
 

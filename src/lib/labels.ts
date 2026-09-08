@@ -24,6 +24,13 @@ export const PIPELINE_ESTADOS = [
 
 export const TODOS_ESTADOS = [...PIPELINE_ESTADOS, "PERDIDO"] as const;
 
+// Una estancia cuenta como "contratada"/confirmada (genera ingreso, ocupa
+// plaza de verdad) a partir de que se firma el contrato, inclusive las fases
+// posteriores del viaje. Antes de eso, aunque tenga habitación asignada,
+// solo es una reserva provisional. Se usa en Informes y en la ocupación de
+// habitaciones.
+export const ESTADOS_CONTRATADOS = ["CONTRATO_FIRMADO", "ALOJADO", "FINALIZADO"] as const;
+
 export const PARTICIPANTE_LABELS: Record<string, string> = {
   ALUMNOS: "Alumnos",
   PROFESORES: "Profesores",

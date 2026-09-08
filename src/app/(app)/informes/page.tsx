@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { ESTADO_LABELS, TODOS_ESTADOS } from "@/lib/labels";
+import { ESTADO_LABELS, TODOS_ESTADOS, ESTADOS_CONTRATADOS } from "@/lib/labels";
 import { getSession } from "@/lib/session";
 import { centroVisibilityFilter } from "@/lib/permissions";
 import { InformesTabs } from "./informes-tabs";
@@ -21,12 +21,6 @@ const COLORES_CANAL: Record<string, string> = {
   Teléfono: "#1baf7a",
   Otro: "#eda100",
 };
-
-// Una estancia cuenta como "contratada" (genera ingreso) a partir de que se
-// firma el contrato, inclusive las fases posteriores del viaje. Decisión de
-// producto: el disparador del ingreso es CONTRATO_FIRMADO, no el presupuesto
-// confirmado ni la fecha del viaje.
-const ESTADOS_CONTRATADOS = ["CONTRATO_FIRMADO", "ALOJADO", "FINALIZADO"] as const;
 
 // Ya se les ha contactado (no están en INTERESADO) pero todavía no han
 // contratado: incluye PERDIDO, porque siguen siendo "contactados sin

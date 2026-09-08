@@ -35,12 +35,23 @@ function diaSemanaISO(fecha: Date): number {
   return (fecha.getUTCDay() + 6) % 7;
 }
 
+// El color de fondo de la celda refleja solo la ocupación confirmada
+// (estancias contratadas): una reserva todavía en pipeline no debe pintar
+// el día de rojo, ya se ve aparte en la barrita de reservas.
 function tonoOcupacion(ocupados: number, capacidad: number): string {
   if (capacidad === 0) return "bg-gray-50 text-gray-400";
   const ratio = ocupados / capacidad;
   if (ratio > 0.9) return "bg-rose-100 text-rose-800";
   if (ratio > 0.5) return "bg-amber-100 text-amber-800";
   return "bg-green-50 text-green-800";
+}
+
+function colorBarraOcupado(ocupados: number, capacidad: number): string {
+  if (capacidad === 0) return "bg-gray-300";
+  const ratio = ocupados / capacidad;
+  if (ratio > 0.9) return "bg-rose-500";
+  if (ratio > 0.5) return "bg-amber-500";
+  return "bg-green-500";
 }
 
 type OcupanteDia = {
@@ -51,7 +62,17 @@ type OcupanteDia = {
   centroNombre: string;
   estanciaId: string;
   alergias: string | null;
+  confirmado: boolean;
 };
+
+function BadgeReserva({ confirmado }: { confirmado: boolean }) {
+  if (confirmado) return null;
+  return (
+    <span className="ml-1 rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-medium text-sky-700">
+      Reservado
+    </span>
+  );
+}
 
 type HabitacionDia = {
   id: string;
@@ -107,7 +128,8 @@ function VistaPorHabitacion({ habitaciones }: { habitaciones: HabitacionDia[] })
             <ul className="mt-2 flex flex-col gap-1.5">
               {h.ocupantes.map((o) => (
                 <li key={o.id} className="text-xs text-gray-600">
-                  <EnlaceOcupante o={o} /> · {o.rolLabel} · {o.centroNombre}
+                  <EnlaceOcupante o={o} />
+                  <BadgeReserva confirmado={o.confirmado} /> · {o.rolLabel} · {o.centroNombre}
                 </li>
               ))}
             </ul>
@@ -143,7 +165,8 @@ function VistaPorCliente({ ocupantes }: { ocupantes: OcupanteDia[] }) {
           <ul className="mt-2 flex flex-col gap-1.5">
             {g.items.map((o) => (
               <li key={o.id} className="text-xs text-gray-600">
-                <EnlaceOcupante o={o} /> · {o.rolLabel}
+                <EnlaceOcupante o={o} />
+                <BadgeReserva confirmado={o.confirmado} /> · {o.rolLabel}
               </li>
             ))}
           </ul>
@@ -213,9 +236,10 @@ function DetalleDia({ fecha }: { fecha: string }) {
       .catch(() => setError("No se pudo cargar el detalle de ese día."));
   }, [fecha]);
 
-  const totalOcupados = habitaciones?.reduce((s, h) => s + h.ocupantes.length, 0) ?? 0;
-  const totalCapacidad = habitaciones?.reduce((s, h) => s + h.capacidad, 0) ?? 0;
   const ocupantes = habitaciones?.flatMap((h) => h.ocupantes) ?? [];
+  const totalOcupados = ocupantes.filter((o) => o.confirmado).length;
+  const totalReservados = ocupantes.filter((o) => !o.confirmado).length;
+  const totalCapacidad = habitaciones?.reduce((s, h) => s + h.capacidad, 0) ?? 0;
 
   return (
     <div className="flex flex-col gap-4">
@@ -230,6 +254,11 @@ function DetalleDia({ fecha }: { fecha: string }) {
         <>
           <p className="text-sm font-medium text-gray-900">
             {totalOcupados}/{totalCapacidad} plazas ocupadas
+            {totalReservados > 0 && (
+              <span className="ml-1.5 font-normal text-sky-700">
+                (+{totalReservados} reservada{totalReservados === 1 ? "" : "s"})
+              </span>
+            )}
           </p>
 
           <div className="flex gap-1 border-b border-gray-200">
@@ -304,27 +333,42 @@ export function CalendarioOcupacion({
         ))}
       </div>
       <div className="mt-1 grid grid-cols-7 gap-1">
-        {celdas.map((dia, i) =>
-          dia === null ? (
-            <div key={`vacio-${i}`} />
-          ) : (
+        {celdas.map((dia, i) => {
+          if (dia === null) return <div key={`vacio-${i}`} />;
+          const capacidad = ocupacion.capacidadTotal;
+          const pctOcupado = capacidad > 0 ? Math.min((dia.ocupados / capacidad) * 100, 100) : 0;
+          const pctReservado =
+            capacidad > 0
+              ? Math.min((dia.reservados / capacidad) * 100, 100 - pctOcupado)
+              : 0;
+          return (
             <button
               key={dia.fecha}
               type="button"
               onClick={() => setDiaSeleccionado(dia.fecha)}
               className={`rounded px-1 py-2 text-center text-xs hover:ring-2 hover:ring-brand-navy/40 ${tonoOcupacion(
                 dia.ocupados,
-                ocupacion.capacidadTotal
+                capacidad
               )}`}
-              title={`${dia.fecha}: ${dia.ocupados}/${ocupacion.capacidadTotal} ocupadas`}
+              title={`${dia.fecha}: ${dia.ocupados} ocupadas + ${dia.reservados} reservadas / ${capacidad}`}
             >
               <p className="font-medium">{Number(dia.fecha.slice(-2))}</p>
-              <p>
-                {dia.ocupados}/{ocupacion.capacidadTotal}
+              {capacidad > 0 && (
+                <div className="mt-1 flex h-1.5 w-full overflow-hidden rounded-full bg-black/10">
+                  <div
+                    className={colorBarraOcupado(dia.ocupados, capacidad)}
+                    style={{ width: `${pctOcupado}%` }}
+                  />
+                  <div className="bg-sky-500" style={{ width: `${pctReservado}%` }} />
+                </div>
+              )}
+              <p className="mt-0.5 leading-tight">
+                {dia.ocupados}/{capacidad}
+                {dia.reservados > 0 && <span className="text-sky-700"> +{dia.reservados}</span>}
               </p>
             </button>
-          )
-        )}
+          );
+        })}
       </div>
 
       <SidePanel
