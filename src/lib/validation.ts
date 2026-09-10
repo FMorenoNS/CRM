@@ -181,4 +181,32 @@ export const participanteSchema = z.object({
 
 export const updateParticipanteSchema = participanteSchema.partial();
 
+// Presupuesto: el detalle que llega de la ventana de cálculo.
+//
+// Los importes NO se aceptan del navegador. Aquí solo se comprueba que lo
+// que llega tiene forma y está en rangos razonables; los totales los vuelve
+// a calcular el servidor con calcularPresupuesto() (src/lib/precios.ts).
+export const presupuestoLineaSchema = z.object({
+  tipo: z.enum(["CONCEPTO", "AUTOBUS"]),
+  codigo: z.string().trim().min(1).max(60),
+  nombre: z.string().trim().min(1).max(120),
+  // El precio se puede ajustar a mano, porque un presupuesto se negocia. El
+  // tope no es una regla de negocio, solo evita un valor absurdo por un
+  // dedazo.
+  precioUnitario: z.number().min(0).max(1_000_000),
+  dias: z.number().int().min(0).max(400),
+  cantidad: z.number().int().min(0).max(2000),
+});
+
+export const presupuestoSchema = z.object({
+  numAlumnos: z.number().int().min(0).max(2000),
+  numProfesores: z.number().int().min(0).max(2000),
+  numMonitores: z.number().int().min(0).max(2000),
+  // Fracciones, no porcentajes: 0,2 es el 20 %.
+  margenPct: z.number().min(0).max(1),
+  ivaPct: z.number().min(0).max(1),
+  notas: z.string().trim().max(5000).optional().nullable(),
+  lineas: z.array(presupuestoLineaSchema).max(200),
+});
+
 export const ESTADO_VALUES = ESTADOS;

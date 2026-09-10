@@ -22,6 +22,7 @@ import {
   type ParticipanteItem,
   type HabitacionOption,
 } from "@/app/(app)/estancias/[id]/participantes";
+import type { PresupuestoGuardado } from "@/app/(app)/estancias/[id]/presupuesto-modal";
 
 function toDateInput(d: Date | null): string {
   return d ? d.toISOString().slice(0, 10) : "";
@@ -56,6 +57,12 @@ export async function buildEstanciaBloques({
         include: { autor: { select: { nombre: true } } },
       },
       documentosEnviados: { orderBy: { enviadoEn: "desc" } },
+      presupuesto: {
+        include: {
+          lineas: { orderBy: { orden: "asc" } },
+          actualizadoPor: { select: { nombre: true } },
+        },
+      },
       participantes: {
         orderBy: { createdAt: "asc" },
         include: { habitacion: { select: { nombre: true } } },
@@ -79,6 +86,28 @@ export async function buildEstanciaBloques({
     enviadoEn: d.enviadoEn.toISOString(),
     exito: d.exito,
   }));
+
+  // Los Decimal de Prisma no cruzan al navegador: se pasan como números.
+  const presupuesto: PresupuestoGuardado | null = estancia.presupuesto
+    ? {
+        numAlumnos: estancia.presupuesto.numAlumnos,
+        numProfesores: estancia.presupuesto.numProfesores,
+        numMonitores: estancia.presupuesto.numMonitores,
+        margenPct: Number(estancia.presupuesto.margenPct),
+        ivaPct: Number(estancia.presupuesto.ivaPct),
+        total: Number(estancia.presupuesto.total),
+        notas: estancia.presupuesto.notas,
+        actualizadoEn: estancia.presupuesto.updatedAt.toISOString(),
+        actualizadoPor: estancia.presupuesto.actualizadoPor?.nombre ?? null,
+        lineas: estancia.presupuesto.lineas.map((l) => ({
+          tipo: l.tipo,
+          codigo: l.codigo,
+          precioUnitario: Number(l.precioUnitario),
+          dias: l.dias,
+          cantidad: l.cantidad,
+        })),
+      }
+    : null;
 
   const capturaFb = estancia.interacciones.find(
     (i) => i.tipo === "CAPTACION_FACEBOOK"
@@ -186,6 +215,7 @@ export async function buildEstanciaBloques({
                 : "",
               notas: estancia.notas,
             }}
+            presupuesto={presupuesto}
           />
         </div>
       </section>

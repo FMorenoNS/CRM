@@ -8,6 +8,10 @@ import {
   PROGRAMA_OPTIONS,
   TIPO_PROYECTO_LABELS,
 } from "@/lib/labels";
+import {
+  PresupuestoCampo,
+  type PresupuestoGuardado,
+} from "./[id]/presupuesto-modal";
 
 export type CentroOption = { id: string; nombre: string };
 
@@ -69,12 +73,14 @@ export function EstanciaForm({
   centros,
   estanciaId,
   defaultValues,
+  presupuesto,
   readOnly,
 }: {
   mode: "create" | "edit";
   centros?: CentroOption[];
   estanciaId?: string;
   defaultValues?: DefaultValues;
+  presupuesto?: PresupuestoGuardado | null;
   readOnly?: boolean;
 }) {
   const router = useRouter();
@@ -336,23 +342,44 @@ export function EstanciaForm({
         </div>
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label
-          htmlFor="presupuestoImporte"
-          className="text-sm font-medium text-gray-700"
-        >
-          Presupuesto (€)
-        </label>
-        <input
-          id="presupuestoImporte"
-          name="presupuestoImporte"
-          type="number"
-          step="0.01"
-          disabled={readOnly}
-          defaultValue={defaultValues?.presupuestoImporte ?? ""}
-          className={inputCls}
+      {/* El presupuesto se calcula en su propia ventana, con las tarifas de
+          la casa. Al crear la estancia todavía no hay a qué colgarlo, así que
+          ahí se deja el importe a mano y la calculadora aparece después. */}
+      {mode === "edit" && estanciaId ? (
+        <PresupuestoCampo
+          estanciaId={estanciaId}
+          presupuesto={presupuesto ?? null}
+          importeActual={defaultValues?.presupuestoImporte ?? null}
+          contexto={{
+            numeroAlumnos: defaultValues?.numeroAlumnos ?? null,
+            numeroProfesores: defaultValues?.numeroProfesores ?? null,
+            fechaInicio,
+            fechaFin,
+          }}
+          readOnly={readOnly}
         />
-      </div>
+      ) : (
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="presupuestoImporte"
+            className="text-sm font-medium text-gray-700"
+          >
+            Presupuesto (€)
+          </label>
+          <input
+            id="presupuestoImporte"
+            name="presupuestoImporte"
+            type="number"
+            step="0.01"
+            disabled={readOnly}
+            defaultValue={defaultValues?.presupuestoImporte ?? ""}
+            className={inputCls}
+          />
+          <p className="text-xs text-gray-500">
+            Se podrá calcular con las tarifas en cuanto la estancia esté creada.
+          </p>
+        </div>
+      )}
 
       {mode === "edit" && (
         <div className="flex flex-col gap-1">

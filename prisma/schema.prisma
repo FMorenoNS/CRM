@@ -2,7 +2,7 @@
 // docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   // "native" para desarrollo local; "debian-openssl-3.0.x" para la imagen
   // Docker (node:20-slim); "rhel-openssl-3.0.x" para las funciones
   // serverless de Vercel.
@@ -87,10 +87,11 @@ model User {
   // Clientes a los que este usuario tiene acceso. Solo se aplica como
   // restricción real al rol DIRECCION (ADMIN y MARKETING ven todos los
   // clientes independientemente de esta lista).
-  centros            Centro[] @relation("UsuarioCentros")
+  centros            Centro[]           @relation("UsuarioCentros")
   // Centro propio de Novaschool al que pertenece (solo informativo).
   centroAsignado     CentroNovaschool?
   apiKeys            ApiKey[]
+  presupuestos       Presupuesto[]
 }
 
 // Claves de API para integraciones externas (p. ej. el bot de captación de
@@ -124,7 +125,7 @@ model Centro {
   contactos Contacto[]
   estancias Estancia[]
   historial AuditLog[]
-  usuarios  User[] @relation("UsuarioCentros")
+  usuarios  User[]     @relation("UsuarioCentros")
 
   @@index([pais])
   @@index([nombre])
@@ -167,6 +168,10 @@ model Estancia {
   interacciones      Interaccion[]
   documentosEnviados DocumentoEnviado[]
   participantes      Participante[]
+  // Presupuesto detallado, con sus líneas. `presupuestoImporte` de arriba
+  // sigue siendo el total, para que los listados, el kanban, los informes y
+  // la exportación a Excel no tengan que mirar aquí.
+  presupuesto        Presupuesto?
 
   @@index([centroId])
   @@index([estado])
@@ -205,12 +210,12 @@ model Participante {
   // brief de residencia para gestionar la estancia con seguridad, nada
   // "por si acaso". "Menor de edad" no se guarda como campo: se calcula a
   // partir de fechaNacimiento y la fecha de inicio de la estancia.
-  fechaNacimiento           DateTime?
-  alergias                  String?
-  contactoEmergenciaNombre  String?
+  fechaNacimiento            DateTime?
+  alergias                   String?
+  contactoEmergenciaNombre   String?
   contactoEmergenciaTelefono String?
-  autorizacionRecibida      Boolean  @default(false)
-  seguroRecibido            Boolean  @default(false)
+  autorizacionRecibida       Boolean   @default(false)
+  seguroRecibido             Boolean   @default(false)
 
   @@index([estanciaId])
   @@index([habitacionId])
@@ -266,4 +271,73 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([centroId, createdAt])
+}
+
+// Tipo de línea de un presupuesto: un concepto de la tarifa (alojamiento,
+// visitas, clases...) o un autobús, que en el Excel iban en bloques aparte.
+enum TipoLineaPresupuesto {
+  CONCEPTO
+  AUTOBUS
+}
+
+// Presupuesto de una estancia, uno por estancia y reeditable: cuando el
+// centro pide un cambio se reabre y se retoca, en lugar de rehacerlo.
+//
+// Los totales se guardan calculados (no solo las líneas) porque un
+// presupuesto es un documento comercial: interesa saber qué números se
+// dieron, no recalcularlos con las tarifas de hoy.
+model Presupuesto {
+  id         String   @id @default(cuid())
+  estanciaId String   @unique
+  estancia   Estancia @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+
+  // El grupo con el que se calculó. Los monitores no cuentan como personas
+  // para el precio por persona: solo alumnos y profesores.
+  numAlumnos    Int @default(0)
+  numProfesores Int @default(0)
+  numMonitores  Int @default(0)
+
+  // Porcentajes aplicados, guardados con el presupuesto: si mañana cambia el
+  // margen de la casa, este presupuesto sigue explicando su propio total.
+  margenPct Decimal @default(0.2000) @db.Decimal(6, 4)
+  ivaPct    Decimal @default(0.1000) @db.Decimal(6, 4)
+
+  totalNeto     Decimal @default(0) @db.Decimal(10, 2)
+  margenImporte Decimal @default(0) @db.Decimal(10, 2)
+  ivaImporte    Decimal @default(0) @db.Decimal(10, 2)
+  total         Decimal @default(0) @db.Decimal(10, 2)
+  pvpPorPersona Decimal @default(0) @db.Decimal(10, 2)
+
+  notas String?
+
+  actualizadoPorId String?
+  actualizadoPor   User?   @relation(fields: [actualizadoPorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lineas PresupuestoLinea[]
+
+  @@index([actualizadoPorId])
+}
+
+// Una línea del presupuesto. Guarda el nombre y el precio del momento a
+// propósito: si la tarifa sube después, el presupuesto ya enviado sigue
+// diciendo lo que se ofreció. El código permite reconocer el concepto al
+// reabrir la ventana aunque su nombre haya cambiado en el catálogo.
+model PresupuestoLinea {
+  id            String      @id @default(cuid())
+  presupuestoId String
+  presupuesto   Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+
+  tipo           TipoLineaPresupuesto
+  codigo         String
+  nombre         String
+  precioUnitario Decimal              @db.Decimal(10, 2)
+  dias           Int                  @default(1)
+  cantidad       Int                  @default(0)
+  total          Decimal              @db.Decimal(10, 2)
+  orden          Int                  @default(0)
+
+  @@index([presupuestoId])
 }
