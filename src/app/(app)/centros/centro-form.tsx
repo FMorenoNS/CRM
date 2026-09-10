@@ -74,7 +74,7 @@ function CentroFields({
           </label>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="pais" className="text-sm font-medium text-gray-700">
             País
@@ -228,7 +228,7 @@ export function CentroCreateForm() {
         <legend className="px-1 text-sm font-medium text-gray-700">
           Persona de contacto (opcional)
         </legend>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <input
             name="contactoNombre"
             placeholder="Nombre"
@@ -257,7 +257,7 @@ export function CentroCreateForm() {
         <legend className="px-1 text-sm font-medium text-gray-700">
           Primera estancia (opcional)
         </legend>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <select name="tipoPrograma" defaultValue="" className={inputCls}>
             <option value="">Tipo de programa</option>
             {PROGRAMA_OPTIONS.map((p) => (

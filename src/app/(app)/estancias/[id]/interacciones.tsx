@@ -107,7 +107,7 @@ export function Interacciones({
         className="mt-4 flex flex-col gap-3 rounded border border-gray-200 bg-white p-4"
       >
         <p className="text-sm font-medium text-gray-700">Registrar interacción</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <select
             name="tipo"
             defaultValue="LLAMADA"

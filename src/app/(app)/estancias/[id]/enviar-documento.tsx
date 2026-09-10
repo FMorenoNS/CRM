@@ -100,7 +100,7 @@ export function EnviarDocumento({
           onSubmit={handleSubmit}
           className="flex max-w-md flex-col gap-3 rounded border border-gray-200 bg-white p-4"
         >
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <select
               name="tipo"
               defaultValue="PRESUPUESTO"

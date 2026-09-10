@@ -11,8 +11,12 @@ export function ColumnasMensuales({
   const max = Math.max(...items.map((i) => i.valor), 1);
 
   return (
-    <div className="flex gap-2" style={{ height: 160 }}>
-      {items.map((i) => (
+    // Doce meses en una pantalla de móvil darían columnas de 25 px con las
+    // etiquetas ilegibles, así que se le pone un ancho mínimo y se arrastra
+    // de lado. En pantalla grande el mínimo no llega a aplicarse.
+    <div className="overflow-x-auto">
+      <div className="flex min-w-[30rem] gap-2" style={{ height: 160 }}>
+        {items.map((i) => (
         <div key={i.etiqueta} className="flex h-full flex-1 flex-col items-center gap-1">
           <span className="text-xs font-medium tabular-nums text-gray-700">
             {formatValor(i.valor)}
@@ -31,7 +35,8 @@ export function ColumnasMensuales({
           </div>
           <span className="text-[10px] capitalize text-gray-500">{i.etiqueta}</span>
         </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

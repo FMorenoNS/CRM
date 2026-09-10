@@ -71,7 +71,7 @@ function CreateForm({ usuarios }: { usuarios: UsuarioOption[] }) {
       className="flex max-w-lg flex-col gap-3 rounded border border-gray-200 bg-white p-4"
     >
       <p className="text-sm font-medium text-gray-700">Crear clave de API</p>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <input
           name="nombre"
           placeholder="Nombre (p. ej. Bot Facebook)"
@@ -175,8 +175,8 @@ export function ApiKeysClient({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="overflow-hidden rounded border border-gray-200 bg-white">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded border border-gray-200 bg-white">
+        <table className="w-full min-w-[40rem] text-sm">
           <thead className="bg-gray-50 text-left text-gray-500">
             <tr>
               <th className="px-4 py-2">Nombre</th>

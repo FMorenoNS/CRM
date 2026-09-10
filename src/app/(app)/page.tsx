@@ -62,18 +62,18 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-semibold text-gray-900">Panel</h1>
         <div className="flex gap-2">
           <Link
             href="/centros/nuevo"
-            className="rounded bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-navy-dark"
+            className="flex-1 rounded bg-brand-navy px-4 py-2 text-center text-sm font-medium text-white hover:bg-brand-navy-dark sm:flex-none"
           >
             Nuevo cliente
           </Link>
           <Link
             href="/estancias/nueva"
-            className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            className="flex-1 rounded border border-gray-300 px-4 py-2 text-center text-sm font-medium text-gray-700 hover:bg-gray-100 sm:flex-none"
           >
             Nueva estancia
           </Link>

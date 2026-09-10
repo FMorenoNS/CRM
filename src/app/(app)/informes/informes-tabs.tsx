@@ -13,7 +13,7 @@ export function InformesTabs({
 
   return (
     <div>
-      <div className="flex gap-1 border-b border-gray-200">
+      <div className="flex gap-1 overflow-x-auto border-b border-gray-200">
         <button
           type="button"
           onClick={() => setVista("numeros")}

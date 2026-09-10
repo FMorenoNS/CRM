@@ -151,7 +151,7 @@ export function EstanciaForm({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="tipoPrograma" className="text-sm font-medium text-gray-700">
             Tipo de programa
@@ -204,7 +204,7 @@ export function EstanciaForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label
             htmlFor="tipoParticipante"
@@ -238,7 +238,7 @@ export function EstanciaForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="numeroAlumnos" className="text-sm font-medium text-gray-700">
             Número de alumnos
@@ -271,7 +271,7 @@ export function EstanciaForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="fechaInicio" className="text-sm font-medium text-gray-700">
             Fecha de inicio
@@ -312,7 +312,7 @@ export function EstanciaForm({
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label
             htmlFor="centroReceptor"

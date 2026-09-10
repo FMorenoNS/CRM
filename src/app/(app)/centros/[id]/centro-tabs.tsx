@@ -43,14 +43,16 @@ export function CentroTabs({
 
   return (
     <div>
-      <div className="flex gap-1 border-b border-gray-200">
+      {/* Las pestañas no caben en una pantalla de móvil: se desplazan de
+          lado en su propia franja, sin arrastrar la página. */}
+      <div className="flex gap-1 overflow-x-auto border-b border-gray-200">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => seleccionar(tab.id)}
             aria-current={activa === tab.id}
-            className={`rounded-t px-4 py-2 text-sm font-medium ${
+            className={`shrink-0 whitespace-nowrap rounded-t px-3 py-2 text-sm font-medium sm:px-4 ${
               activa === tab.id
                 ? "border-b-2 border-brand-navy text-brand-navy"
                 : "text-gray-500 hover:text-gray-800"

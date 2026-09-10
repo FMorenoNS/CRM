@@ -122,7 +122,7 @@ function DatosSensiblesForm({ participante }: { participante: ParticipanteItem }
       onSubmit={handleSubmit}
       className="mt-2 flex flex-col gap-3 rounded border border-gray-100 bg-gray-50 p-3"
     >
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-gray-600">Fecha de nacimiento</label>
           <input
@@ -476,7 +476,7 @@ export function Participantes({
         className="mt-4 flex flex-col gap-3 rounded border border-gray-200 bg-white p-4"
       >
         <p className="text-sm font-medium text-gray-700">Añadir participante</p>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <input
             name="nombre"
             placeholder="Nombre"

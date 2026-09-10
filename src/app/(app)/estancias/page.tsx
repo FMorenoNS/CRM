@@ -63,71 +63,81 @@ export default async function EstanciasPage({
         </Link>
       </div>
 
-      <form className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-        <label htmlFor="pais" className="text-gray-600">
-          País
-        </label>
-        <select
-          id="pais"
-          name="pais"
-          defaultValue={pais ?? ""}
-          className="rounded border border-gray-300 px-2 py-1"
-        >
-          <option value="">Todos</option>
-          {PAIS_OPTIONS.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
-        <label htmlFor="participante" className="ml-2 text-gray-600">
-          Participante
-        </label>
-        <select
-          id="participante"
-          name="participante"
-          defaultValue={participante ?? ""}
-          className="rounded border border-gray-300 px-2 py-1"
-        >
-          <option value="">Todos</option>
-          <option value="ALUMNOS">Alumnos</option>
-          <option value="PROFESORES">Profesores</option>
-        </select>
-        <label htmlFor="tipoPrograma" className="ml-2 text-gray-600">
-          Tipo de programa
-        </label>
-        <select
-          id="tipoPrograma"
-          name="tipoPrograma"
-          defaultValue={tipoPrograma ?? ""}
-          className="rounded border border-gray-300 px-2 py-1"
-        >
-          <option value="">Todos</option>
-          {PROGRAMA_OPTIONS.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
-        <label htmlFor="estado" className="ml-2 text-gray-600">
-          Estado
-        </label>
-        <select
-          id="estado"
-          name="estado"
-          defaultValue={estado ?? ""}
-          className="rounded border border-gray-300 px-2 py-1"
-        >
-          <option value="">Todos</option>
-          {TODOS_ESTADOS.map((e) => (
-            <option key={e} value={e}>
-              {ESTADO_LABELS[e]}
-            </option>
-          ))}
-        </select>
+      {/* En el móvil los cuatro filtros se apilan a lo ancho de la pantalla;
+          desde tablet vuelven a la línea de siempre. */}
+      <form className="mt-4 grid gap-3 text-sm sm:flex sm:flex-wrap sm:items-center sm:gap-2">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+          <label htmlFor="pais" className="text-gray-600">
+            País
+          </label>
+          <select
+            id="pais"
+            name="pais"
+            defaultValue={pais ?? ""}
+            className="w-full rounded border border-gray-300 px-2 py-2 sm:w-auto sm:py-1"
+          >
+            <option value="">Todos</option>
+            {PAIS_OPTIONS.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1 sm:ml-2 sm:flex-row sm:items-center sm:gap-2">
+          <label htmlFor="participante" className="text-gray-600">
+            Participante
+          </label>
+          <select
+            id="participante"
+            name="participante"
+            defaultValue={participante ?? ""}
+            className="w-full rounded border border-gray-300 px-2 py-2 sm:w-auto sm:py-1"
+          >
+            <option value="">Todos</option>
+            <option value="ALUMNOS">Alumnos</option>
+            <option value="PROFESORES">Profesores</option>
+          </select>
+        </div>
+        <div className="flex flex-col gap-1 sm:ml-2 sm:flex-row sm:items-center sm:gap-2">
+          <label htmlFor="tipoPrograma" className="text-gray-600">
+            Tipo de programa
+          </label>
+          <select
+            id="tipoPrograma"
+            name="tipoPrograma"
+            defaultValue={tipoPrograma ?? ""}
+            className="w-full rounded border border-gray-300 px-2 py-2 sm:w-auto sm:py-1"
+          >
+            <option value="">Todos</option>
+            {PROGRAMA_OPTIONS.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1 sm:ml-2 sm:flex-row sm:items-center sm:gap-2">
+          <label htmlFor="estado" className="text-gray-600">
+            Estado
+          </label>
+          <select
+            id="estado"
+            name="estado"
+            defaultValue={estado ?? ""}
+            className="w-full rounded border border-gray-300 px-2 py-2 sm:w-auto sm:py-1"
+          >
+            <option value="">Todos</option>
+            {TODOS_ESTADOS.map((e) => (
+              <option key={e} value={e}>
+                {ESTADO_LABELS[e]}
+              </option>
+            ))}
+          </select>
+        </div>
         <button
           type="submit"
-          className="rounded border border-gray-300 px-3 py-1 text-gray-700 hover:bg-gray-100"
+          className="rounded border border-gray-300 px-3 py-2 text-gray-700 hover:bg-gray-100 sm:py-1"
         >
           Aplicar
         </button>

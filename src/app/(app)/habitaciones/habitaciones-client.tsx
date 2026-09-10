@@ -53,7 +53,7 @@ function CreateForm() {
       className="flex max-w-md flex-col gap-3 rounded border border-gray-200 bg-white p-4"
     >
       <p className="text-sm font-medium text-gray-700">Nueva habitación</p>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <input name="nombre" placeholder="Nombre (p. ej. 101)" required className={inputCls} />
         <input
           name="capacidad"
@@ -150,8 +150,10 @@ function RowActions({ habitacion }: { habitacion: HabitacionRow }) {
 export function HabitacionesClient({ habitaciones }: { habitaciones: HabitacionRow[] }) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="overflow-hidden rounded border border-gray-200 bg-white">
-        <table className="w-full text-sm">
+      {/* En el móvil la tabla no cabe: se arrastra de lado dentro de su caja.
+          Con overflow-hidden se quedaban columnas cortadas sin poder verlas. */}
+      <div className="overflow-x-auto rounded border border-gray-200 bg-white">
+        <table className="w-full min-w-[32rem] text-sm">
           <thead className="bg-gray-50 text-left text-gray-500">
             <tr>
               <th className="px-4 py-2">Nombre</th>
