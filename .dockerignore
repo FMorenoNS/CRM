@@ -7,3 +7,6 @@ npm-debug.log*
 README.md
 *.md
 .claude
+backups
+*.dump
+tsconfig.tsbuildinfo

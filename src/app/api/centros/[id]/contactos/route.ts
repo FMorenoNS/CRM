@@ -4,8 +4,10 @@ import { requireApiUser } from "@/lib/api-auth";
 import { contactoSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
 import { canEditMasterData, forbidden } from "@/lib/permissions";
+import { DEMASIADO_GRANDE, readJsonBody } from "@/lib/request";
+import { withApi } from "@/lib/http";
 
-export async function POST(
+async function handlerPOST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -16,7 +18,13 @@ export async function POST(
 
   if (!canEditMasterData(user, centroId)) return forbidden();
 
-  const body = await request.json().catch(() => null);
+  const body = await readJsonBody(request);
+  if (body === DEMASIADO_GRANDE) {
+    return NextResponse.json(
+      { error: "Los datos enviados son demasiado grandes." },
+      { status: 413 }
+    );
+  }
   const parsed = contactoSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
@@ -44,3 +52,8 @@ export async function POST(
 
   return NextResponse.json({ id: contacto.id });
 }
+
+// Cada método se publica envuelto en withApi: si algo falla por dentro, el
+// usuario recibe un mensaje genérico con un código de referencia y el
+// detalle completo queda solo en el registro del servidor.
+export const POST = withApi("POST /api/centros/[id]/contactos", handlerPOST as never);

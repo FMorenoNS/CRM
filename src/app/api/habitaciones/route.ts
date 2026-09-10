@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireApiAdmin();
+  const auth = await requireApiAdmin(request);
   if (auth instanceof NextResponse) return auth;
 
   const body = await request.json().catch(() => null);

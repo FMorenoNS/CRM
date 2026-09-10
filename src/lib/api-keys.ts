@@ -43,5 +43,8 @@ export async function getUserFromApiKey(
     email: apiKey.user.email,
     role: apiKey.user.role,
     centroIds: apiKey.user.centros.map((c) => c.id),
+    // Una clave de API es para integraciones automáticas: no pasa por la
+    // pantalla de cambio de contraseña, así que este aviso no le aplica.
+    debeCambiarPassword: false,
   };
 }

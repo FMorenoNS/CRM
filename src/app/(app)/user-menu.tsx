@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { LogoutButton } from "./logout-button";
+import { LogoutButton, LogoutAllButton } from "./logout-button";
 import { ROLE_LABELS } from "@/lib/labels";
 
 export function UserMenu({
@@ -47,8 +48,20 @@ export function UserMenu({
           <p className="px-3 pb-2 text-xs text-gray-500">
             {ROLE_LABELS[role] ?? role}
           </p>
+          <div className="border-t border-gray-100 pt-2">
+            <Link
+              href="/cambiar-password"
+              className="block px-3 py-1 text-gray-600 hover:bg-gray-50 hover:text-brand-navy"
+              onClick={() => setOpen(false)}
+            >
+              Cambiar contraseña
+            </Link>
+          </div>
           <div className="border-t border-gray-100 px-3 pt-2">
             <LogoutButton />
+          </div>
+          <div className="px-3 pt-1">
+            <LogoutAllButton />
           </div>
         </div>
       )}

@@ -29,6 +29,9 @@ export default async function AppLayout({
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
+  // Contraseña temporal puesta por un administrador: no se puede usar el CRM
+  // hasta elegir una propia.
+  if (session.debeCambiarPassword) redirect("/cambiar-password");
 
   // Los mismos destinos que la barra de arriba, agrupados para el menú del
   // móvil (donde no hay sitio para desplegables dentro de desplegables).

@@ -7,7 +7,7 @@ import { PARTICIPANTE_LABELS, ESTADOS_CONTRATADOS } from "@/lib/labels";
 // /habitaciones (solo ADMIN, igual que esa página): qué habitaciones hay,
 // quién ocupa cada una ese día y de qué cliente/estancia es.
 export async function GET(request: Request) {
-  const auth = await requireApiAdmin();
+  const auth = await requireApiAdmin(request);
   if (auth instanceof NextResponse) return auth;
 
   const { searchParams } = new URL(request.url);

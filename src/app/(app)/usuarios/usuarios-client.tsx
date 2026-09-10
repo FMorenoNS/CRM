@@ -84,9 +84,9 @@ function CreateForm({ clientes }: { clientes: ClienteOption[] }) {
         <input
           name="password"
           type="text"
-          placeholder="Contraseña inicial"
+          placeholder="Contraseña temporal (mín. 10)"
           required
-          minLength={8}
+          minLength={10}
           className={inputCls}
         />
         <select name="role" defaultValue="MARKETING" className={inputCls}>
@@ -185,15 +185,24 @@ function RowActions({
   const [isPending, setIsPending] = useState(false);
   const [centroIds, setCentroIds] = useState<string[]>(user.centroIds);
 
-  async function patch(payload: Record<string, unknown>) {
+  async function patch(payload: Record<string, unknown>): Promise<boolean> {
     setIsPending(true);
     try {
-      await fetch(`/api/usuarios/${user.id}`, {
+      const res = await fetch(`/api/usuarios/${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      if (!res.ok) {
+        const result = await res.json().catch(() => ({}));
+        alert(result.error ?? "No se pudo guardar el cambio.");
+        return false;
+      }
       router.refresh();
+      return true;
+    } catch {
+      alert("No se pudo conectar con el servidor.");
+      return false;
     } finally {
       setIsPending(false);
     }
@@ -212,15 +221,22 @@ function RowActions({
 
   async function resetPassword() {
     const nueva = prompt(
-      `Nueva contraseña para ${user.nombre} (mín. 8 caracteres):`
+      `Contraseña TEMPORAL para ${user.nombre} (mín. 10 caracteres).\n\n` +
+        `${user.nombre} tendrá que cambiarla al entrar, y se cerrarán sus ` +
+        `sesiones abiertas en todos los dispositivos.`
     );
     if (!nueva) return;
-    if (nueva.length < 8) {
-      alert("La contraseña debe tener al menos 8 caracteres.");
+    if (nueva.length < 10) {
+      alert("La contraseña debe tener al menos 10 caracteres.");
       return;
     }
-    await patch({ password: nueva });
-    alert("Contraseña actualizada.");
+    const ok = await patch({ password: nueva });
+    if (ok) {
+      alert(
+        "Contraseña temporal asignada. Pásasela por un canal seguro: al " +
+          "entrar, el CRM le obligará a elegir una propia."
+      );
+    }
   }
 
   return (

@@ -5,8 +5,10 @@ import { estadoSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
 import { ESTADO_LABELS } from "@/lib/labels";
 import { canDoOperational, forbidden } from "@/lib/permissions";
+import { DEMASIADO_GRANDE, readJsonBody } from "@/lib/request";
+import { withApi } from "@/lib/http";
 
-export async function PATCH(
+async function handlerPATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -24,7 +26,13 @@ export async function PATCH(
   }
   if (!canDoOperational(user, existing.centroId)) return forbidden();
 
-  const body = await request.json().catch(() => null);
+  const body = await readJsonBody(request);
+  if (body === DEMASIADO_GRANDE) {
+    return NextResponse.json(
+      { error: "Los datos enviados son demasiado grandes." },
+      { status: 413 }
+    );
+  }
   const parsed = estadoSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
@@ -47,3 +55,8 @@ export async function PATCH(
 
   return NextResponse.json({ ok: true });
 }
+
+// Cada método se publica envuelto en withApi: si algo falla por dentro, el
+// usuario recibe un mensaje genérico con un código de referencia y el
+// detalle completo queda solo en el registro del servidor.
+export const PATCH = withApi("PATCH /api/estancias/[id]/estado", handlerPATCH as never);
