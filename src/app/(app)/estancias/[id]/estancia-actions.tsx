@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useConfirm } from "@/app/(app)/confirm-dialog";
 
 export function DeleteEstanciaButton({
   estanciaId,
@@ -11,10 +12,19 @@ export function DeleteEstanciaButton({
   centroId?: string;
 }) {
   const router = useRouter();
+  const { confirmar, dialogo } = useConfirm();
   const [isPending, setIsPending] = useState(false);
 
   async function handleClick() {
-    if (!confirm("¿Eliminar esta estancia y todo su historial?")) return;
+    if (
+      !(await confirmar({
+        titulo: "Eliminar estancia",
+        mensaje: "¿Eliminar esta estancia y todo su historial?",
+        textoConfirmar: "Eliminar",
+        peligro: true,
+      }))
+    )
+      return;
     setIsPending(true);
     try {
       const res = await fetch(`/api/estancias/${estanciaId}`, {
@@ -30,13 +40,16 @@ export function DeleteEstanciaButton({
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={isPending}
-      className="text-sm text-red-600 hover:underline disabled:opacity-50"
-    >
-      Eliminar estancia
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={isPending}
+        className="text-sm text-red-600 hover:underline disabled:opacity-50"
+      >
+        Eliminar estancia
+      </button>
+      {dialogo}
+    </>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { useConfirm } from "@/app/(app)/confirm-dialog";
 
 export type HabitacionRow = {
   id: string;
@@ -83,6 +84,7 @@ function CreateForm() {
 
 function RowActions({ habitacion }: { habitacion: HabitacionRow }) {
   const router = useRouter();
+  const { confirmar, dialogo } = useConfirm();
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -102,7 +104,15 @@ function RowActions({ habitacion }: { habitacion: HabitacionRow }) {
   }
 
   async function eliminar() {
-    if (!confirm(`¿Eliminar la habitación "${habitacion.nombre}"?`)) return;
+    if (
+      !(await confirmar({
+        titulo: "Eliminar habitación",
+        mensaje: `¿Eliminar la habitación "${habitacion.nombre}"?`,
+        textoConfirmar: "Eliminar",
+        peligro: true,
+      }))
+    )
+      return;
     setIsPending(true);
     setError(undefined);
     try {
@@ -143,6 +153,7 @@ function RowActions({ habitacion }: { habitacion: HabitacionRow }) {
           {error}
         </p>
       )}
+      {dialogo}
     </div>
   );
 }

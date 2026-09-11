@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { PIPELINE_ESTADOS } from "@/lib/labels";
 import type { Contacto } from "@/lib/tareas";
+import { useConfirm } from "./confirm-dialog";
 
 function contactoLinea(contacto: Contacto) {
   if (!contacto) return "Sin contacto registrado";
@@ -70,6 +71,7 @@ export function AbandonoTaskCard({
   estanciaId: string;
 }) {
   const router = useRouter();
+  const { confirmar, dialogo } = useConfirm();
   const [isPending, setIsPending] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -77,7 +79,15 @@ export function AbandonoTaskCard({
     event.preventDefault();
     event.stopPropagation();
     if (isPending) return;
-    if (!window.confirm(`¿Marcar "${centroNombre}" como Perdido?`)) return;
+    if (
+      !(await confirmar({
+        titulo: "Marcar como perdido",
+        mensaje: `¿Marcar "${centroNombre}" como Perdido?`,
+        textoConfirmar: "Marcar como perdido",
+        peligro: true,
+      }))
+    )
+      return;
     setIsPending(true);
     try {
       const res = await fetch(`/api/estancias/${estanciaId}/estado`, {
@@ -97,21 +107,24 @@ export function AbandonoTaskCard({
   if (done) return null;
 
   return (
-    <div className="rounded border border-rose-200 bg-white px-3 py-2 text-sm hover:border-rose-400">
-      <Link href={href} className="block">
-        <span className="font-medium text-gray-900">{centroNombre}</span>
-        <span className="block break-words text-gray-600">{contactoLinea(contacto)}</span>
-        <span className="text-xs text-rose-700">{detalle}</span>
-      </Link>
-      <button
-        type="button"
-        onClick={marcarPerdido}
-        disabled={isPending}
-        className="mt-2 rounded border border-rose-300 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50"
-      >
-        {isPending ? "Marcando…" : "Marcar como perdido"}
-      </button>
-    </div>
+    <>
+      <div className="rounded border border-rose-200 bg-white px-3 py-2 text-sm hover:border-rose-400">
+        <Link href={href} className="block">
+          <span className="font-medium text-gray-900">{centroNombre}</span>
+          <span className="block break-words text-gray-600">{contactoLinea(contacto)}</span>
+          <span className="text-xs text-rose-700">{detalle}</span>
+        </Link>
+        <button
+          type="button"
+          onClick={marcarPerdido}
+          disabled={isPending}
+          className="mt-2 rounded border border-rose-300 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+        >
+          {isPending ? "Marcando…" : "Marcar como perdido"}
+        </button>
+      </div>
+      {dialogo}
+    </>
   );
 }
 

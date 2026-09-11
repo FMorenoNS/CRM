@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useConfirm } from "./confirm-dialog";
 
 export function LogoutButton() {
   const router = useRouter();
@@ -37,13 +38,14 @@ export function LogoutButton() {
  */
 export function LogoutAllButton() {
   const router = useRouter();
+  const { confirmar, dialogo } = useConfirm();
   const [isPending, setIsPending] = useState(false);
 
   async function handleClick() {
     if (
-      !window.confirm(
+      !(await confirmar(
         "Se cerrará tu sesión en todos los dispositivos, incluido este. ¿Continuar?"
-      )
+      ))
     ) {
       return;
     }
@@ -58,13 +60,16 @@ export function LogoutAllButton() {
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={isPending}
-      className="text-left text-xs text-gray-400 hover:text-gray-700 disabled:opacity-50"
-    >
-      Cerrar en todos los dispositivos
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={isPending}
+        className="text-left text-xs text-gray-400 hover:text-gray-700 disabled:opacity-50"
+      >
+        Cerrar en todos los dispositivos
+      </button>
+      {dialogo}
+    </>
   );
 }

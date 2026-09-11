@@ -15,6 +15,7 @@ import {
   type LineaEntrada,
 } from "@/lib/precios";
 import { CENTRO_ASIGNADO_LABELS } from "@/lib/labels";
+import { useConfirm } from "@/app/(app)/confirm-dialog";
 
 const CENTROS_NOVASCHOOL = ["OPENWORLD", "MEDINA_ELVIRA"] as const;
 
@@ -183,6 +184,7 @@ function Calculadora({
   onGuardado: (total: number | null) => void;
 }) {
   const router = useRouter();
+  const { confirmar, dialogo: dialogoConfirmar } = useConfirm();
   const { dias, noches } = diasYNoches(contexto.fechaInicio, contexto.fechaFin);
 
   const [numAlumnos, setNumAlumnos] = useState(
@@ -492,7 +494,15 @@ function Calculadora({
   }
 
   async function borrar() {
-    if (!window.confirm("¿Borrar el presupuesto de esta estancia?")) return;
+    if (
+      !(await confirmar({
+        titulo: "Borrar presupuesto",
+        mensaje: "¿Borrar el presupuesto de esta estancia?",
+        textoConfirmar: "Borrar",
+        peligro: true,
+      }))
+    )
+      return;
     setError(undefined);
     setGuardando(true);
     try {
@@ -513,6 +523,7 @@ function Calculadora({
   }
 
   return (
+    <>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center overscroll-contain bg-brand-navy/50 p-3 sm:p-4"
       onClick={onCerrar}
@@ -852,6 +863,8 @@ function Calculadora({
         </div>
       </div>
     </div>
+    {dialogoConfirmar}
+    </>
   );
 }
 

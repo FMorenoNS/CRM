@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { ROLE_LABELS } from "@/lib/labels";
+import { useConfirm } from "@/app/(app)/confirm-dialog";
 
 export type ApiKeyRow = {
   id: string;
@@ -117,6 +118,7 @@ function CreateForm({ usuarios }: { usuarios: UsuarioOption[] }) {
 
 function RowActions({ apiKey }: { apiKey: ApiKeyRow }) {
   const router = useRouter();
+  const { confirmar, dialogo } = useConfirm();
   const [isPending, setIsPending] = useState(false);
 
   async function toggleActivo() {
@@ -134,7 +136,15 @@ function RowActions({ apiKey }: { apiKey: ApiKeyRow }) {
   }
 
   async function eliminar() {
-    if (!confirm(`¿Eliminar la clave "${apiKey.nombre}"? Dejará de funcionar de inmediato.`)) return;
+    if (
+      !(await confirmar({
+        titulo: "Eliminar clave de API",
+        mensaje: `¿Eliminar la clave "${apiKey.nombre}"? Dejará de funcionar de inmediato.`,
+        textoConfirmar: "Eliminar",
+        peligro: true,
+      }))
+    )
+      return;
     setIsPending(true);
     try {
       await fetch(`/api/api-keys/${apiKey.id}`, { method: "DELETE" });
@@ -162,6 +172,7 @@ function RowActions({ apiKey }: { apiKey: ApiKeyRow }) {
       >
         Eliminar
       </button>
+      {dialogo}
     </div>
   );
 }

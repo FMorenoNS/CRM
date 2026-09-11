@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { INTERACCION_LABELS } from "@/lib/labels";
+import { useConfirm } from "@/app/(app)/confirm-dialog";
 
 export type InteraccionItem = {
   id: string;
@@ -29,6 +30,7 @@ export function Interacciones({
   interacciones: InteraccionItem[];
 }) {
   const router = useRouter();
+  const { confirmar, dialogo } = useConfirm();
   const [error, setError] = useState<string>();
   const [isPending, setIsPending] = useState(false);
 
@@ -64,7 +66,8 @@ export function Interacciones({
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("¿Eliminar esta interacción?")) return;
+    if (!(await confirmar({ mensaje: "¿Eliminar esta interacción?", peligro: true })))
+      return;
     await fetch(`/api/interacciones/${id}`, { method: "DELETE" });
     router.refresh();
   }
@@ -144,6 +147,7 @@ export function Interacciones({
           {isPending ? "Guardando..." : "Registrar"}
         </button>
       </form>
+      {dialogo}
     </div>
   );
 }

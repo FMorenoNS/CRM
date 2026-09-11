@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { PARTICIPANTE_LABELS } from "@/lib/labels";
+import { useConfirm } from "@/app/(app)/confirm-dialog";
 
 export type ParticipanteItem = {
   id: string;
@@ -205,6 +206,7 @@ function ParticipanteRow({
   estanciaFechaInicio: string | null;
 }) {
   const router = useRouter();
+  const { confirmar, dialogo } = useConfirm();
   const [habitacionId, setHabitacionId] = useState(participante.habitacionId ?? "");
   const [error, setError] = useState<string>();
   const [isPending, setIsPending] = useState(false);
@@ -212,17 +214,20 @@ function ParticipanteRow({
   async function cambiarHabitacion(event: React.ChangeEvent<HTMLSelectElement>) {
     const anterior = habitacionId;
     const nueva = event.target.value;
+    const select = event.target;
 
     const destino = habitaciones.find((h) => h.id === nueva);
     let forzarMezcla = false;
     if (destino?.rolOcupante && destino.rolOcupante !== participante.rol) {
       const ocupanteLabel = PARTICIPANTE_LABELS[destino.rolOcupante]?.toLowerCase() ?? destino.rolOcupante;
       const rolLabel = PARTICIPANTE_LABELS[participante.rol]?.toLowerCase() ?? participante.rol;
-      const confirmado = confirm(
-        `${destino.nombre} ya la ocupan ${ocupanteLabel}. Vas a meter ahí a ${participante.nombre} (${rolLabel}), compartiendo habitación con el otro rol. ¿Seguro que quieres hacerlo?`
-      );
+      const confirmado = await confirmar({
+        titulo: "Compartir habitación con otro rol",
+        mensaje: `${destino.nombre} ya la ocupan ${ocupanteLabel}. Vas a meter ahí a ${participante.nombre} (${rolLabel}), compartiendo habitación con el otro rol. ¿Seguro que quieres hacerlo?`,
+        textoConfirmar: "Sí, meterlo ahí",
+      });
       if (!confirmado) {
-        event.target.value = anterior;
+        select.value = anterior;
         return;
       }
       forzarMezcla = true;
@@ -250,7 +255,14 @@ function ParticipanteRow({
   }
 
   async function eliminar() {
-    if (!confirm(`¿Quitar a ${participante.nombre} de esta estancia?`)) return;
+    if (
+      !(await confirmar({
+        mensaje: `¿Quitar a ${participante.nombre} de esta estancia?`,
+        textoConfirmar: "Quitar",
+        peligro: true,
+      }))
+    )
+      return;
     await fetch(`/api/participantes/${participante.id}`, { method: "DELETE" });
     router.refresh();
   }
@@ -319,6 +331,7 @@ function ParticipanteRow({
         {mostrarDatos ? "Ocultar datos sensibles ▲" : "Datos sensibles ▾"}
       </button>
       {mostrarDatos && <DatosSensiblesForm participante={participante} />}
+      {dialogo}
     </li>
   );
 }
@@ -397,6 +410,7 @@ export function Participantes({
   totalLibres: number;
 }) {
   const router = useRouter();
+  const { confirmar, dialogo } = useConfirm();
   const [error, setError] = useState<string>();
   const [isPending, setIsPending] = useState(false);
 
@@ -414,9 +428,11 @@ export function Participantes({
       if (destino?.rolOcupante && destino.rolOcupante !== rol) {
         const ocupanteLabel = PARTICIPANTE_LABELS[destino.rolOcupante]?.toLowerCase() ?? destino.rolOcupante;
         const rolLabel = PARTICIPANTE_LABELS[rol]?.toLowerCase() ?? rol;
-        const confirmado = confirm(
-          `${destino.nombre} ya la ocupan ${ocupanteLabel}. Vas a meter ahí a ${nombre || "este participante"} (${rolLabel}), compartiendo habitación con el otro rol. ¿Seguro que quieres hacerlo?`
-        );
+        const confirmado = await confirmar({
+          titulo: "Compartir habitación con otro rol",
+          mensaje: `${destino.nombre} ya la ocupan ${ocupanteLabel}. Vas a meter ahí a ${nombre || "este participante"} (${rolLabel}), compartiendo habitación con el otro rol. ¿Seguro que quieres hacerlo?`,
+          textoConfirmar: "Sí, meterlo ahí",
+        });
         if (!confirmado) return;
         forzarMezcla = true;
       }
@@ -506,6 +522,7 @@ export function Participantes({
           {isPending ? "Guardando..." : "Añadir"}
         </button>
       </form>
+      {dialogo}
     </div>
   );
 }
