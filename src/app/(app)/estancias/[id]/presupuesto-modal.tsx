@@ -615,10 +615,10 @@ function Calculadora({
             )}
           </fieldset>
 
-          {/* Centro(s) Novaschool que acogen el grupo */}
+          {/* Centros Novaschool que acogen el grupo */}
           <fieldset disabled={readOnly} className="mt-4">
             <span className="text-sm font-medium text-gray-700">
-              Centro(s) que acogen el grupo
+              Centros que acogen el grupo
             </span>
             <p className="text-xs text-gray-500">
               Solo alguien de uno de estos centros puede aprobarlo antes de
