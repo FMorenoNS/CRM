@@ -658,7 +658,7 @@ function Calculadora({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p>
                     Pendiente de validar por alguien de uno de los centros
-                    marcados arriba (que no sea quien lo preparó).
+                    marcados arriba.
                   </p>
                   {/* Validar es una acción aparte de "editar el
                       presupuesto": alguien que no puede tocar el resto de la
