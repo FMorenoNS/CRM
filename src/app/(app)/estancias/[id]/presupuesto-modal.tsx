@@ -14,6 +14,9 @@ import {
   valoresPorDefecto,
   type LineaEntrada,
 } from "@/lib/precios";
+import { CENTRO_ASIGNADO_LABELS } from "@/lib/labels";
+
+const CENTROS_NOVASCHOOL = ["OPENWORLD", "MEDINA_ELVIRA"] as const;
 
 /** Presupuesto ya guardado, tal como lo devuelve el servidor. */
 export type PresupuestoGuardado = {
@@ -26,6 +29,12 @@ export type PresupuestoGuardado = {
   notas: string | null;
   actualizadoEn: string;
   actualizadoPor: string | null;
+  centrosNovaschool: string[];
+  validadoPor: string | null;
+  validadoEn: string | null;
+  // Calculado en el servidor: si el usuario que tiene la ventana abierta
+  // puede darle el visto bueno ahora mismo.
+  puedeValidar: boolean;
   lineas: {
     tipo: "CONCEPTO" | "AUTOBUS";
     codigo: string;
@@ -113,6 +122,17 @@ export function PresupuestoCampo({
                     : ""}
                 </span>
               )}
+              {presupuesto && (
+                <span
+                  className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${
+                    presupuesto.validadoPor
+                      ? "bg-green-100 text-green-800"
+                      : "bg-amber-100 text-amber-800"
+                  }`}
+                >
+                  {presupuesto.validadoPor ? "Validado" : "Sin validar"}
+                </span>
+              )}
             </>
           ) : (
             <span className="text-gray-500">Sin presupuesto todavía</span>
@@ -162,6 +182,7 @@ function Calculadora({
   onCerrar: () => void;
   onGuardado: (total: number | null) => void;
 }) {
+  const router = useRouter();
   const { dias, noches } = diasYNoches(contexto.fechaInicio, contexto.fechaFin);
 
   const [numAlumnos, setNumAlumnos] = useState(
@@ -179,8 +200,19 @@ function Calculadora({
   );
   const [iva, setIva] = useState((presupuesto?.ivaPct ?? IVA_POR_DEFECTO) * 100);
   const [notas, setNotas] = useState(presupuesto?.notas ?? "");
+  const [centrosNovaschool, setCentrosNovaschool] = useState<string[]>(
+    presupuesto?.centrosNovaschool ?? []
+  );
   const [guardando, setGuardando] = useState(false);
+  const [validando, setValidando] = useState(false);
   const [error, setError] = useState<string>();
+  const [errorValidar, setErrorValidar] = useState<string>();
+
+  function alternarCentro(codigo: string) {
+    setCentrosNovaschool((prev) =>
+      prev.includes(codigo) ? prev.filter((c) => c !== codigo) : [...prev, codigo]
+    );
+  }
 
   const pax = numAlumnos + numProfesores;
 
@@ -190,8 +222,11 @@ function Calculadora({
    * líneas se ajustan solas. En cuanto se toca una, se respeta y deja de
    * seguirlo. Las líneas de un presupuesto ya guardado cuentan como tocadas.
    */
+  // Los monitores se cuentan aparte del grupo desde el principio (empiezan
+  // en 1, no en el número de personas), así que se marcan "tocados" de
+  // fábrica para que el efecto de más abajo no los reescriba con el grupo.
   const [tocadas, setTocadas] = useState<Record<string, boolean>>(() => {
-    const t: Record<string, boolean> = {};
+    const t: Record<string, boolean> = { MONITORES: true };
     for (const l of presupuesto?.lineas ?? []) t[l.codigo] = true;
     return t;
   });
@@ -213,6 +248,17 @@ function Calculadora({
           precioUnitario: guardada.precioUnitario,
           dias: guardada.dias,
           cantidad: guardada.cantidad,
+        };
+      } else if (c.codigo === "MONITORES") {
+        // Contratar monitores es obligatorio: entran marcados de fábrica,
+        // con 1 de cantidad (no el grupo entero, que no son personas) y los
+        // días de la estancia. Todo esto se puede seguir tocando a mano.
+        const def = valoresPorDefecto(c.unidad, ctx);
+        inicial[c.codigo] = {
+          incluida: true,
+          precioUnitario: c.precio,
+          dias: def.dias,
+          cantidad: 1,
         };
       } else {
         const def = valoresPorDefecto(c.unidad, ctx);
@@ -254,7 +300,7 @@ function Calculadora({
       const siguiente = { ...prev };
       let cambio = false;
       for (const codigo of Object.keys(prev)) {
-        if (tocadas[codigo]) continue;
+        if (tocadas[codigo] || codigo === "MONITORES") continue;
         if (prev[codigo].cantidad === pax) continue;
         siguiente[codigo] = { ...prev[codigo], cantidad: pax };
         cambio = true;
@@ -287,7 +333,7 @@ function Calculadora({
   /** Devuelve todas las cantidades al grupo y los días a lo que toca. */
   function rellenarConElGrupo() {
     const ctx = { pax, dias, noches };
-    setTocadas({});
+    setTocadas({ MONITORES: true });
     setFilas((prev) => {
       const siguiente = { ...prev };
       for (const c of CONCEPTOS) {
@@ -295,7 +341,7 @@ function Calculadora({
         siguiente[c.codigo] = {
           ...prev[c.codigo],
           dias: def.dias,
-          cantidad: def.cantidad,
+          cantidad: c.codigo === "MONITORES" ? 1 : def.cantidad,
         };
       }
       for (const a of AUTOBUSES) {
@@ -409,6 +455,7 @@ function Calculadora({
           ivaPct: iva / 100,
           notas,
           lineas: lineasIncluidas,
+          centrosNovaschool,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -421,6 +468,26 @@ function Calculadora({
       setError("No se pudo conectar con el servidor.");
     } finally {
       setGuardando(false);
+    }
+  }
+
+  async function validar() {
+    setErrorValidar(undefined);
+    setValidando(true);
+    try {
+      const res = await fetch(`/api/estancias/${estanciaId}/presupuesto`, {
+        method: "PATCH",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErrorValidar(data.error ?? "No se pudo validar.");
+        return;
+      }
+      router.refresh();
+    } catch {
+      setErrorValidar("No se pudo conectar con el servidor.");
+    } finally {
+      setValidando(false);
     }
   }
 
@@ -536,6 +603,75 @@ function Calculadora({
               </button>
             )}
           </fieldset>
+
+          {/* Centro(s) Novaschool que acogen el grupo */}
+          <fieldset disabled={readOnly} className="mt-4">
+            <span className="text-sm font-medium text-gray-700">
+              Centro(s) que acogen el grupo
+            </span>
+            <p className="text-xs text-gray-500">
+              Solo alguien de uno de estos centros puede darle el visto bueno
+              al presupuesto antes de enviarlo.
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-4">
+              {CENTROS_NOVASCHOOL.map((codigo) => (
+                <label key={codigo} className="flex items-center gap-1.5 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={centrosNovaschool.includes(codigo)}
+                    onChange={() => alternarCentro(codigo)}
+                    className="h-4 w-4 accent-brand-navy"
+                  />
+                  {CENTRO_ASIGNADO_LABELS[codigo]}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          {/* Validación por una segunda persona */}
+          {presupuesto && (
+            <div
+              className={`mt-4 rounded border px-3 py-2 text-sm ${
+                presupuesto.validadoPor
+                  ? "border-green-200 bg-green-50 text-green-800"
+                  : "border-amber-200 bg-amber-50 text-amber-800"
+              }`}
+            >
+              {presupuesto.validadoPor ? (
+                <p>
+                  ✓ Validado por <b>{presupuesto.validadoPor}</b> el{" "}
+                  {new Date(presupuesto.validadoEn as string).toLocaleString("es-ES")}
+                  .
+                </p>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p>
+                    Pendiente de validar por alguien de uno de los centros
+                    marcados arriba (que no sea quien lo preparó).
+                  </p>
+                  {/* Validar es una acción aparte de "editar el
+                      presupuesto": alguien que no puede tocar el resto de la
+                      estancia (p. ej. Marketing) puede seguir siendo quien
+                      lo valida, si es de uno de los centros marcados. */}
+                  {presupuesto.puedeValidar && (
+                    <button
+                      type="button"
+                      onClick={validar}
+                      disabled={validando}
+                      className="shrink-0 rounded bg-green-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-800 disabled:opacity-50"
+                    >
+                      {validando ? "Validando…" : "Dar el visto bueno"}
+                    </button>
+                  )}
+                </div>
+              )}
+              {errorValidar && (
+                <p className="mt-1 text-xs text-red-700" role="alert">
+                  {errorValidar}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Conceptos */}
           <h3 className="mt-6 text-sm font-semibold text-gray-900">

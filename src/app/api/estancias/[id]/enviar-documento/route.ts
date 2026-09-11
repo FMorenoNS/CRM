@@ -63,12 +63,25 @@ async function handlerPOST(
 
   const estancia = await prisma.estancia.findUnique({
     where: { id: estanciaId },
-    select: { centroId: true },
+    select: {
+      centroId: true,
+      presupuesto: { select: { validadoPorId: true } },
+    },
   });
   if (!estancia) {
     return NextResponse.json({ error: "No encontrada." }, { status: 404 });
   }
   if (!canDoOperational(user, estancia.centroId)) return forbidden();
+
+  // El presupuesto necesita el visto bueno de otra persona antes de poder
+  // mandarlo al cliente. No se confía en lo que decida el navegador: se
+  // vuelve a comprobar aquí.
+  if (parsed.data.tipo === "PRESUPUESTO" && !estancia.presupuesto?.validadoPorId) {
+    return NextResponse.json(
+      { error: "El presupuesto todavía no tiene el visto bueno de otra persona." },
+      { status: 409 }
+    );
+  }
 
   try {
     await sendDocumentEmail({

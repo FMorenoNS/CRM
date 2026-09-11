@@ -80,6 +80,11 @@ export async function PUT(
     pvpPorPersona: totales.pvpPorPersona,
     notas: d.notas || null,
     actualizadoPorId: user.id,
+    centrosNovaschool: d.centrosNovaschool,
+    // Guardar el presupuesto (números, líneas o centros) invalida el visto
+    // bueno anterior: hay que volver a validarlo.
+    validadoPorId: null,
+    validadoEn: null,
   };
 
   // Todo junto o nada: sería peor quedarse con las líneas nuevas y el total
@@ -113,6 +118,78 @@ export async function PUT(
   });
 
   return NextResponse.json({ ok: true, totales });
+}
+
+/**
+ * Da el visto bueno al presupuesto ya guardado, para que se pueda enviar al
+ * cliente. Solo puede hacerlo alguien de uno de los centros Novaschool
+ * marcados en el presupuesto (es quien de verdad sabe si ese centro puede
+ * acoger al grupo), y que no sea quien lo preparó/editó por última vez
+ * (evita que la misma persona se autoapruebe).
+ */
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await requireApiUser(request);
+  if (auth instanceof NextResponse) return auth;
+  const user = auth;
+  const { id: estanciaId } = await params;
+
+  const estancia = await prisma.estancia.findUnique({
+    where: { id: estanciaId },
+    select: {
+      centroId: true,
+      presupuesto: {
+        select: { id: true, actualizadoPorId: true, centrosNovaschool: true, validadoPorId: true },
+      },
+    },
+  });
+  if (!estancia) return noEncontrada();
+  if (!canDoOperational(user, estancia.centroId)) return noEncontrada();
+  if (!estancia.presupuesto) {
+    return NextResponse.json(
+      { error: "Esta estancia no tiene presupuesto todavía." },
+      { status: 404 }
+    );
+  }
+  if (estancia.presupuesto.validadoPorId) {
+    return NextResponse.json(
+      { error: "Este presupuesto ya está validado." },
+      { status: 409 }
+    );
+  }
+  if (estancia.presupuesto.actualizadoPorId === user.id) {
+    return NextResponse.json(
+      { error: "No puedes validar un presupuesto que has preparado tú mismo." },
+      { status: 403 }
+    );
+  }
+  if (
+    !user.centroAsignado ||
+    !estancia.presupuesto.centrosNovaschool.includes(user.centroAsignado)
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Solo puede validarlo alguien de uno de los centros Novaschool marcados en el presupuesto.",
+      },
+      { status: 403 }
+    );
+  }
+
+  await prisma.presupuesto.update({
+    where: { estanciaId },
+    data: { validadoPorId: user.id, validadoEn: new Date() },
+  });
+
+  await registrarHistorial({
+    centroId: estancia.centroId,
+    actorId: user.id,
+    accion: "Presupuesto validado",
+  });
+
+  return NextResponse.json({ ok: true });
 }
 
 /** Borra el presupuesto y deja la estancia sin importe. */

@@ -35,9 +35,11 @@ function toDateInput(d: Date | null): string {
 export async function buildEstanciaBloques({
   estanciaId,
   puedeEditar,
+  sesion,
 }: {
   estanciaId: string;
   puedeEditar: boolean;
+  sesion: { userId: string; centroAsignado: "OPENWORLD" | "MEDINA_ELVIRA" | null };
 }): Promise<{ estancia: ReactNode; participantes: ReactNode }> {
   const estancia = await prisma.estancia.findUnique({
     where: { id: estanciaId },
@@ -61,6 +63,7 @@ export async function buildEstanciaBloques({
         include: {
           lineas: { orderBy: { orden: "asc" } },
           actualizadoPor: { select: { nombre: true } },
+          validadoPor: { select: { nombre: true } },
         },
       },
       participantes: {
@@ -87,6 +90,17 @@ export async function buildEstanciaBloques({
     exito: d.exito,
   }));
 
+  // Puede darle el visto bueno quien pertenezca a uno de los centros
+  // marcados en el presupuesto, no sea quien lo preparó, y todavía no esté
+  // validado.
+  const puedeValidar = Boolean(
+    estancia.presupuesto &&
+      !estancia.presupuesto.validadoPorId &&
+      sesion.centroAsignado &&
+      estancia.presupuesto.centrosNovaschool.includes(sesion.centroAsignado) &&
+      estancia.presupuesto.actualizadoPorId !== sesion.userId
+  );
+
   // Los Decimal de Prisma no cruzan al navegador: se pasan como números.
   const presupuesto: PresupuestoGuardado | null = estancia.presupuesto
     ? {
@@ -99,6 +113,12 @@ export async function buildEstanciaBloques({
         notas: estancia.presupuesto.notas,
         actualizadoEn: estancia.presupuesto.updatedAt.toISOString(),
         actualizadoPor: estancia.presupuesto.actualizadoPor?.nombre ?? null,
+        centrosNovaschool: estancia.presupuesto.centrosNovaschool,
+        validadoPor: estancia.presupuesto.validadoPor?.nombre ?? null,
+        validadoEn: estancia.presupuesto.validadoEn
+          ? estancia.presupuesto.validadoEn.toISOString()
+          : null,
+        puedeValidar,
         lineas: estancia.presupuesto.lineas.map((l) => ({
           tipo: l.tipo,
           codigo: l.codigo,
@@ -108,6 +128,8 @@ export async function buildEstanciaBloques({
         })),
       }
     : null;
+
+  const presupuestoValidado = Boolean(estancia.presupuesto?.validadoPorId);
 
   const capturaFb = estancia.interacciones.find(
     (i) => i.tipo === "CAPTACION_FACEBOOK"
@@ -230,6 +252,7 @@ export async function buildEstanciaBloques({
             emailConfigured={isEmailConfigured()}
             defaultEmail={estancia.centro.contactos[0]?.email ?? ""}
             documentos={documentos}
+            presupuestoValidado={presupuestoValidado}
           />
         </div>
       </section>

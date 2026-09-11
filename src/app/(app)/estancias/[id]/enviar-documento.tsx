@@ -16,16 +16,23 @@ export function EnviarDocumento({
   emailConfigured,
   defaultEmail,
   documentos,
+  presupuestoValidado,
 }: {
   estanciaId: string;
   emailConfigured: boolean;
   defaultEmail: string;
   documentos: DocumentoItem[];
+  // El presupuesto necesita el visto bueno de otra persona antes de poder
+  // mandarlo al cliente. El contrato no pasa por esto.
+  presupuestoValidado: boolean;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string>();
   const [ok, setOk] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const [tipo, setTipo] = useState<"PRESUPUESTO" | "CONTRATO">("PRESUPUESTO");
+
+  const bloqueadoPorValidar = tipo === "PRESUPUESTO" && !presupuestoValidado;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -103,7 +110,8 @@ export function EnviarDocumento({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <select
               name="tipo"
-              defaultValue="PRESUPUESTO"
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value as "PRESUPUESTO" | "CONTRATO")}
               className="rounded border border-gray-300 px-3 py-2 text-sm"
             >
               <option value="PRESUPUESTO">Presupuesto</option>
@@ -118,6 +126,13 @@ export function EnviarDocumento({
               className="rounded border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
+          {bloqueadoPorValidar && (
+            <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Este presupuesto todavía no tiene el visto bueno de otra
+              persona: hay que validarlo (en la calculadora de presupuesto)
+              antes de poder enviarlo al cliente.
+            </p>
+          )}
           {error && (
             <p className="text-sm text-red-600" role="alert">
               {error}
@@ -126,7 +141,8 @@ export function EnviarDocumento({
           {ok && <p className="text-sm text-green-600">Documento enviado.</p>}
           <button
             type="submit"
-            disabled={isPending}
+            disabled={isPending || bloqueadoPorValidar}
+            title={bloqueadoPorValidar ? "Falta validar el presupuesto." : undefined}
             className="self-start rounded bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-navy-dark disabled:opacity-50"
           >
             {isPending ? "Enviando..." : "Enviar documento"}

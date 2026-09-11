@@ -227,6 +227,13 @@ export const presupuestoSchema = z.object({
   ivaPct: z.number().min(0).max(1),
   notas: z.string().trim().max(5000).optional().nullable(),
   lineas: z.array(presupuestoLineaSchema).max(200),
+  // Centro(s) de Novaschool que acogen al grupo. Determina quién puede
+  // darle el visto bueno al presupuesto antes de enviarlo.
+  centrosNovaschool: z
+    .array(z.enum(["OPENWORLD", "MEDINA_ELVIRA"]))
+    .max(2)
+    .optional()
+    .default([]),
 });
 
 export const ESTADO_VALUES = ESTADOS;

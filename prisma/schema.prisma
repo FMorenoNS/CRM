@@ -96,7 +96,8 @@ model User {
   // Centro propio de Novaschool al que pertenece (solo informativo).
   centroAsignado     CentroNovaschool?
   apiKeys            ApiKey[]
-  presupuestos       Presupuesto[]
+  presupuestos       Presupuesto[]      @relation("PresupuestoActualizadoPor")
+  presupuestosValidados Presupuesto[]   @relation("PresupuestoValidadoPor")
   sessions           Session[]
 }
 
@@ -358,7 +359,20 @@ model Presupuesto {
   notas String?
 
   actualizadoPorId String?
-  actualizadoPor   User?   @relation(fields: [actualizadoPorId], references: [id])
+  actualizadoPor   User?   @relation("PresupuestoActualizadoPor", fields: [actualizadoPorId], references: [id])
+
+  // Centro(s) propios de Novaschool donde se aloja el grupo. Quien da el
+  // visto bueno tiene que pertenecer a uno de estos centros: es quien de
+  // verdad sabe si ese centro puede acoger al grupo.
+  centrosNovaschool CentroNovaschool[]
+
+  // Validación por una segunda persona (de uno de los centros marcados,
+  // distinta de quien preparó el presupuesto) antes de poder enviarlo al
+  // cliente. Se limpia en cuanto se vuelve a guardar el presupuesto: un
+  // cambio en los números invalida el visto bueno anterior.
+  validadoPorId String?
+  validadoPor   User?     @relation("PresupuestoValidadoPor", fields: [validadoPorId], references: [id])
+  validadoEn    DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -366,6 +380,7 @@ model Presupuesto {
   lineas PresupuestoLinea[]
 
   @@index([actualizadoPorId])
+  @@index([validadoPorId])
 }
 
 // Una línea del presupuesto. Guarda el nombre y el precio del momento a
