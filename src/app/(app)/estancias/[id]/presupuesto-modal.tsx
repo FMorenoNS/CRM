@@ -621,8 +621,8 @@ function Calculadora({
               Centro(s) que acogen el grupo
             </span>
             <p className="text-xs text-gray-500">
-              Solo alguien de uno de estos centros puede darle el visto bueno
-              al presupuesto antes de enviarlo.
+              Solo alguien de uno de estos centros puede aprobarlo antes de
+              enviarlo.
             </p>
             <div className="mt-1.5 flex flex-wrap gap-4">
               {CENTROS_NOVASCHOOL.map((codigo) => (
