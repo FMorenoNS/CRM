@@ -46,9 +46,72 @@ export function StaticTaskCard({
       className={`block rounded border bg-white px-3 py-2 text-sm ${TONE_BORDER[tone]}`}
     >
       <span className="font-medium text-gray-900">{centroNombre}</span>
-      <span className="block text-gray-600">{contactoLinea(contacto)}</span>
+      <span className="block break-words text-gray-600">{contactoLinea(contacto)}</span>
       <span className={`text-xs ${TONE_TEXT[tone]}`}>{detalle}</span>
     </Link>
+  );
+}
+
+// Tarjeta de un posible abandono: a diferencia de TaskCard no avanza a la
+// siguiente fase (no tiene sentido aquí), sino que marca directamente la
+// estancia como Perdido, que es la acción que de verdad se hace desde esta
+// sección casi siempre.
+export function AbandonoTaskCard({
+  href,
+  centroNombre,
+  contacto,
+  detalle,
+  estanciaId,
+}: {
+  href: string;
+  centroNombre: string;
+  contacto: Contacto;
+  detalle: string;
+  estanciaId: string;
+}) {
+  const router = useRouter();
+  const [isPending, setIsPending] = useState(false);
+  const [done, setDone] = useState(false);
+
+  async function marcarPerdido(event: React.MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (isPending) return;
+    if (!window.confirm(`¿Marcar "${centroNombre}" como Perdido?`)) return;
+    setIsPending(true);
+    try {
+      const res = await fetch(`/api/estancias/${estanciaId}/estado`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: "PERDIDO" }),
+      });
+      if (res.ok) {
+        setDone(true);
+        router.refresh();
+      }
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  if (done) return null;
+
+  return (
+    <div className="rounded border border-rose-200 bg-white px-3 py-2 text-sm hover:border-rose-400">
+      <Link href={href} className="block">
+        <span className="font-medium text-gray-900">{centroNombre}</span>
+        <span className="block break-words text-gray-600">{contactoLinea(contacto)}</span>
+        <span className="text-xs text-rose-700">{detalle}</span>
+      </Link>
+      <button
+        type="button"
+        onClick={marcarPerdido}
+        disabled={isPending}
+        className="mt-2 rounded border border-rose-300 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+      >
+        {isPending ? "Marcando…" : "Marcar como perdido"}
+      </button>
+    </div>
   );
 }
 
@@ -134,7 +197,7 @@ export function TaskCard({
     >
       <Link href={href} className="block pr-6">
         <span className="font-medium text-gray-900">{centroNombre}</span>
-        <span className="block text-gray-600">{contactoLinea(contacto)}</span>
+        <span className="block break-words text-gray-600">{contactoLinea(contacto)}</span>
         <span className={`text-xs ${TONE_TEXT[tone]}`}>{detalle}</span>
       </Link>
       {siguiente && (

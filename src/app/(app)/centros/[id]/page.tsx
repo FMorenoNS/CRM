@@ -89,7 +89,11 @@ export default async function CentroDetailPage({
   }));
 
   const { estancia: estanciaBloque, participantes: participantesBloque } = selectedId
-    ? await buildEstanciaBloques({ estanciaId: selectedId, puedeEditar })
+    ? await buildEstanciaBloques({
+        estanciaId: selectedId,
+        puedeEditar,
+        sesion: { userId: session.id, centroAsignado: session.centroAsignado },
+      })
     : {
         estancia: (
           <p className="text-sm text-gray-500">

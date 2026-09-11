@@ -14,6 +14,10 @@ export type SessionUser = {
   // true si un administrador le puso una contraseña temporal: hasta que la
   // cambie, el CRM le lleva siempre a la pantalla de cambio de contraseña.
   debeCambiarPassword: boolean;
+  // Centro propio de Novaschool al que pertenece este usuario (si tiene).
+  // Se usa para saber quién puede validar un presupuesto: solo alguien del
+  // centro que va a acoger al grupo.
+  centroAsignado: "OPENWORLD" | "MEDINA_ELVIRA" | null;
 };
 
 /**
@@ -94,6 +98,7 @@ export async function getSession(): Promise<SessionUser | null> {
     role: session.user.role,
     centroIds: session.user.centros.map((c) => c.id),
     debeCambiarPassword: session.user.debeCambiarPassword,
+    centroAsignado: session.user.centroAsignado,
   };
 }
 

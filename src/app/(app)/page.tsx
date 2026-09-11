@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ESTADO_LABELS } from "@/lib/labels";
-import { TaskCard, StaticTaskCard, TaskGroup } from "./task-card";
+import { TaskCard, StaticTaskCard, AbandonoTaskCard, TaskGroup } from "./task-card";
 import { getSession } from "@/lib/session";
 import { centroVisibilityFilter } from "@/lib/permissions";
 import { getTareas, DIAS_ABANDONO } from "@/lib/tareas";
@@ -127,12 +127,12 @@ export default async function DashboardPage() {
           <ul className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {tareas.abandonadas.map((i) => (
               <li key={i.key}>
-                <StaticTaskCard
+                <AbandonoTaskCard
                   href={i.href}
                   centroNombre={i.centroNombre}
                   contacto={i.contacto}
                   detalle={i.detalle}
-                  tone="rose"
+                  estanciaId={i.key}
                 />
               </li>
             ))}

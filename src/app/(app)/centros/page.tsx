@@ -160,7 +160,7 @@ export default async function CentrosPage({
                 <p className="mt-2 text-sm text-gray-700">
                   {contacto.nombre}
                   {contacto.cargo && (
-                    <span className="text-gray-400"> · {contacto.cargo}</span>
+                    <span className="text-gray-900"> · {contacto.cargo}</span>
                   )}
                 </p>
               )}
