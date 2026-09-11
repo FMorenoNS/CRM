@@ -17,7 +17,7 @@ import {
 import { CENTRO_ASIGNADO_LABELS } from "@/lib/labels";
 import { useConfirm } from "@/app/(app)/confirm-dialog";
 
-const CENTROS_NOVASCHOOL = ["OPENWORLD", "MEDINA_ELVIRA"] as const;
+const CENTROS_NOVASCHOOL = ["OPENWORLD", "MEDINA_ELVIRA", "ANORETA"] as const;
 
 /** Presupuesto ya guardado, tal como lo devuelve el servidor. */
 export type PresupuestoGuardado = {

@@ -52,7 +52,7 @@ async function handlerPOST(request: Request) {
       centros: parsed.data.centroIds?.length
         ? { connect: parsed.data.centroIds.map((id) => ({ id })) }
         : undefined,
-      centroAsignado: parsed.data.centroAsignado || null,
+      centroAsignado: parsed.data.centroAsignado,
     },
   });
 

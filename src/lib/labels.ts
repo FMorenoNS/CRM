@@ -165,4 +165,5 @@ export const TIPO_PROYECTO_LABELS: Record<string, string> = {
 export const CENTRO_ASIGNADO_LABELS: Record<string, string> = {
   OPENWORLD: "Openworld",
   MEDINA_ELVIRA: "Medina Elvira",
+  ANORETA: "Añoreta",
 };

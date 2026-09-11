@@ -19,7 +19,7 @@ const updateSchema = z.object({
   password: z.string().min(1).max(PASSWORD_MAX_LENGTH).optional(),
   centroIds: z.array(z.string().max(64)).max(500).optional(),
   centroAsignado: z
-    .enum(["OPENWORLD", "MEDINA_ELVIRA"])
+    .enum(["OPENWORLD", "MEDINA_ELVIRA", "ANORETA"])
     .optional()
     .nullable()
     .or(z.literal("")),
@@ -97,7 +97,7 @@ async function handlerPATCH(
     debeCambiarPassword?: boolean;
     passwordUpdatedAt?: Date;
     centros?: { set: { id: string }[] };
-    centroAsignado?: "OPENWORLD" | "MEDINA_ELVIRA" | null;
+    centroAsignado?: "OPENWORLD" | "MEDINA_ELVIRA" | "ANORETA" | null;
   } = {};
   const cambios: string[] = [];
 

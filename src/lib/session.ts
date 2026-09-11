@@ -17,7 +17,7 @@ export type SessionUser = {
   // Centro propio de Novaschool al que pertenece este usuario (si tiene).
   // Se usa para saber quién puede validar un presupuesto: solo alguien del
   // centro que va a acoger al grupo.
-  centroAsignado: "OPENWORLD" | "MEDINA_ELVIRA" | null;
+  centroAsignado: "OPENWORLD" | "MEDINA_ELVIRA" | "ANORETA" | null;
 };
 
 /**

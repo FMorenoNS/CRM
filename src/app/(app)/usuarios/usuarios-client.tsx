@@ -94,8 +94,15 @@ function CreateForm({ clientes }: { clientes: ClienteOption[] }) {
           <option value="DIRECCION">Dirección</option>
           <option value="ADMIN">Administrador</option>
         </select>
-        <select name="centroAsignado" defaultValue="" className={inputCls}>
-          <option value="">Centro asignado (sin asignar)</option>
+        <select
+          name="centroAsignado"
+          defaultValue=""
+          required
+          className={inputCls}
+        >
+          <option value="" disabled>
+            Centro asignado (obligatorio)…
+          </option>
           {Object.entries(CENTRO_ASIGNADO_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
               {label}

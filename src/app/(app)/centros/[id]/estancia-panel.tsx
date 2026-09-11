@@ -39,7 +39,10 @@ export async function buildEstanciaBloques({
 }: {
   estanciaId: string;
   puedeEditar: boolean;
-  sesion: { userId: string; centroAsignado: "OPENWORLD" | "MEDINA_ELVIRA" | null };
+  sesion: {
+    userId: string;
+    centroAsignado: "OPENWORLD" | "MEDINA_ELVIRA" | "ANORETA" | null;
+  };
 }): Promise<{ estancia: ReactNode; participantes: ReactNode }> {
   const estancia = await prisma.estancia.findUnique({
     where: { id: estanciaId },

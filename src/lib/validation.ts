@@ -162,11 +162,12 @@ export const userSchema = z.object({
     .max(200),
   role: z.enum(["ADMIN", "MARKETING", "DIRECCION"]),
   centroIds: z.array(z.string().max(64)).max(500).optional(),
-  centroAsignado: z
-    .enum(["OPENWORLD", "MEDINA_ELVIRA"])
-    .optional()
-    .nullable()
-    .or(z.literal("")),
+  // Obligatorio al crear el perfil: todo usuario pertenece a un centro de
+  // Novaschool (informativo, pero necesario para saber quién puede validar
+  // los presupuestos de cada centro).
+  centroAsignado: z.enum(["OPENWORLD", "MEDINA_ELVIRA", "ANORETA"], {
+    error: "Selecciona el centro al que pertenece este usuario.",
+  }),
 });
 
 export const habitacionSchema = z.object({
@@ -230,8 +231,8 @@ export const presupuestoSchema = z.object({
   // Centro(s) de Novaschool que acogen al grupo. Determina quién puede
   // darle el visto bueno al presupuesto antes de enviarlo.
   centrosNovaschool: z
-    .array(z.enum(["OPENWORLD", "MEDINA_ELVIRA"]))
-    .max(2)
+    .array(z.enum(["OPENWORLD", "MEDINA_ELVIRA", "ANORETA"]))
+    .max(3)
     .optional()
     .default([]),
 });
