@@ -28,6 +28,41 @@ export type DatosCliente = {
 
 export type LineaPdf = { nombre: string; cantidad: number; dias: number };
 
+// El nombre de cada línea se guarda en español al calcular el presupuesto
+// (así es como está el catálogo en src/lib/precios.ts), así que para el PDF
+// en inglés hace falta esta traducción aparte, por código de concepto. Si
+// aparece un código que no está aquí (no debería pasar, todas las líneas
+// salen del catálogo fijo), se deja el nombre en español antes que dejarlo
+// en blanco.
+const NOMBRE_CONCEPTO_EN: Record<string, string> = {
+  MONITORES: "Monitors",
+  ALOJAMIENTO_PC: "Full board accommodation",
+  ALOJAMIENTO_MP: "Half board accommodation",
+  ALHAMBRA: "Alhambra",
+  PAQ_CIENCIAS: "Science Park package",
+  MUSEO_LORCA: "Lorca Museum",
+  CATEDRAL_CAPILLA: "Cathedral and Royal Chapel",
+  GINCANA: "Treasure hunt",
+  GRANADA_SHOPPING: "Granada shopping",
+  CUEVA_VENTANAS: "Caves Windows",
+  CLASES: "Classes",
+  MATERIALES: "Materials",
+  JOB_SHADOWING: "Job shadowing",
+  MYAGORA: "MyAgora",
+  INSTALACIONES: "Facilities",
+  FLAMENCO: "Flamenco show",
+  RC: "Public liability insurance",
+  SEGURO_ACCIDENTES: "Accident insurance",
+  AEROP_MALAGA: "Málaga Airport transfer",
+  BUS_CUEVA_VENTANAS: "Caves Windows",
+  BUS_COSTA_TROPICAL: "Costa Tropical",
+  BUS_GRANADA: "Granada",
+  BUS_GIBRALTAR: "Gibraltar",
+  BUS_SEVILLA: "Seville",
+  TAXIS: "Taxis",
+  TAXI_TRANSFER_BUS: "Taxi transfer bus",
+};
+
 export type DatosPresupuestoPdf = {
   idioma: "es" | "en";
   numero: number;
@@ -344,7 +379,7 @@ export async function construirDatosPresupuestoPdf(
     fechaInicio: estancia.fechaInicio,
     fechaFin: estancia.fechaFin,
     lineas: estancia.presupuesto.lineas.map((l) => ({
-      nombre: l.nombre,
+      nombre: idioma === "en" ? (NOMBRE_CONCEPTO_EN[l.codigo] ?? l.nombre) : l.nombre,
       cantidad: l.cantidad,
       dias: l.dias,
     })),
