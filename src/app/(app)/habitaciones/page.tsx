@@ -44,6 +44,7 @@ export default async function HabitacionesPage({
     nombre: h.nombre,
     capacidad: h.capacidad,
     activa: h.activa,
+    centroNovaschool: h.centroNovaschool,
     ocupantes: h._count.participantes,
   }));
 

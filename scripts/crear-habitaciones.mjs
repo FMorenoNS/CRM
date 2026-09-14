@@ -1,0 +1,86 @@
+/**
+ * Crea (o actualiza) el catálogo de habitaciones de Medina Elvira, la única
+ * sede que tiene habitaciones hoy. Lista tal cual la dio Fran (número de
+ * camas/literas como comentario, solo para referencia: el CRM solo guarda
+ * el nombre y la capacidad).
+ *
+ * Está escrito en JavaScript plano a propósito, igual que crear-admin.mjs:
+ * así funciona igual en un portátil y dentro del contenedor de producción.
+ *
+ * Uso en local:
+ *     npm run db:seed:habitaciones
+ *
+ * Uso en el servidor (Docker):
+ *     docker compose exec app node scripts/crear-habitaciones.mjs
+ *
+ * Seguro de ejecutar varias veces: cada habitación se identifica por su
+ * centro + nombre, así que volver a ejecutarlo actualiza los datos en vez
+ * de duplicar filas.
+ */
+import { PrismaClient } from "@prisma/client";
+
+const CENTRO = "MEDINA_ELVIRA";
+
+// activa: false = bloqueada / cerrada (por obras o sin datos todavía).
+// capacidad: 0 en las bloqueadas de las que no se conoce ni el número de
+// camas, para que no cuenten en la capacidad total de la residencia.
+const HABITACIONES = [
+  // 101-107: bloqueadas, capacidad todavía desconocida.
+  { nombre: "101", capacidad: 0, activa: false },
+  { nombre: "102", capacidad: 0, activa: false },
+  { nombre: "103", capacidad: 0, activa: false },
+  { nombre: "104", capacidad: 0, activa: false },
+  { nombre: "105", capacidad: 0, activa: false },
+  { nombre: "106", capacidad: 0, activa: false },
+  { nombre: "107", capacidad: 0, activa: false },
+  { nombre: "108", capacidad: 2, activa: true }, // 2 camas
+  { nombre: "109", capacidad: 1, activa: true }, // 1 cama
+  { nombre: "110", capacidad: 5, activa: false }, // cerrada por obras, camas sin determinar
+  { nombre: "111", capacidad: 4, activa: true }, // 2 literas
+  { nombre: "112", capacidad: 5, activa: true }, // 2 literas y 1 cama
+  { nombre: "113", capacidad: 5, activa: true }, // 3 camas y 1 litera
+  { nombre: "114", capacidad: 4, activa: true }, // 2 camas y 1 litera
+  { nombre: "115", capacidad: 5, activa: true }, // 3 camas y 1 litera
+  { nombre: "116", capacidad: 5, activa: true }, // 2 camas y 1 litera
+  { nombre: "117", capacidad: 4, activa: true }, // 2 camas y 1 litera
+  { nombre: "118", capacidad: 0, activa: false }, // bloqueada
+  { nombre: "119", capacidad: 0, activa: false }, // bloqueada
+  { nombre: "120", capacidad: 3, activa: true }, // 1 cama y 1 litera
+  { nombre: "121", capacidad: 3, activa: true }, // 3 camas
+  { nombre: "122", capacidad: 4, activa: true }, // 4 camas
+  { nombre: "123", capacidad: 4, activa: true }, // 4 camas
+  { nombre: "124", capacidad: 5, activa: true }, // 3 camas
+  { nombre: "125", capacidad: 5, activa: true }, // 5 camas
+  { nombre: "126", capacidad: 2, activa: true }, // 2 camas
+  { nombre: "127", capacidad: 4, activa: true }, // 3 camas
+  { nombre: "128", capacidad: 4, activa: true }, // 3 camas
+  { nombre: "129", capacidad: 4, activa: true }, // 4 camas
+  { nombre: "130", capacidad: 4, activa: true }, // 1 cama y 2 literas
+  { nombre: "131", capacidad: 6, activa: true }, // 2 camas y 2 literas
+  { nombre: "132", capacidad: 5, activa: true }, // 1 cama y 2 literas
+  { nombre: "133", capacidad: 5, activa: true }, // 1 cama y 2 literas
+  { nombre: "134", capacidad: 5, activa: true }, // 1 cama y 2 literas
+  { nombre: "135", capacidad: 3, activa: true }, // 1 cama y 1 litera
+  { nombre: "136", capacidad: 2, activa: true }, // 1 litera
+];
+
+async function main() {
+  const prisma = new PrismaClient();
+  try {
+    for (const h of HABITACIONES) {
+      await prisma.habitacion.upsert({
+        where: { centroNovaschool_nombre: { centroNovaschool: CENTRO, nombre: h.nombre } },
+        create: { ...h, centroNovaschool: CENTRO },
+        update: { capacidad: h.capacidad, activa: h.activa },
+      });
+    }
+    console.log(`Listo: ${HABITACIONES.length} habitaciones de Medina Elvira creadas/actualizadas.`);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : error);
+  process.exitCode = 1;
+});

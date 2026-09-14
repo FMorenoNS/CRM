@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "db:seed": "node scripts/crear-admin.mjs",
+    "db:seed:habitaciones": "node scripts/crear-habitaciones.mjs",
     "postinstall": "prisma generate",
     "db:backup": "sh scripts/backup.sh",
     "db:restore-test": "sh scripts/restore.sh",

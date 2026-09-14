@@ -3,12 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { useConfirm } from "@/app/(app)/confirm-dialog";
+import { CENTRO_ASIGNADO_LABELS } from "@/lib/labels";
 
 export type HabitacionRow = {
   id: string;
   nombre: string;
   capacidad: number;
   activa: boolean;
+  centroNovaschool: string;
   ocupantes: number;
 };
 
@@ -168,6 +170,7 @@ export function HabitacionesClient({ habitaciones }: { habitaciones: HabitacionR
           <thead className="bg-gray-50 text-left text-gray-500">
             <tr>
               <th className="px-4 py-2">Nombre</th>
+              <th className="px-4 py-2">Centro</th>
               <th className="px-4 py-2 text-right">Capacidad</th>
               <th className="px-4 py-2 text-right">Ocupantes actuales</th>
               <th className="px-4 py-2">Estado</th>
@@ -178,6 +181,9 @@ export function HabitacionesClient({ habitaciones }: { habitaciones: HabitacionR
             {habitaciones.map((h) => (
               <tr key={h.id} className="border-t border-gray-100">
                 <td className="px-4 py-2">{h.nombre}</td>
+                <td className="px-4 py-2 text-gray-600">
+                  {CENTRO_ASIGNADO_LABELS[h.centroNovaschool] ?? h.centroNovaschool}
+                </td>
                 <td className="px-4 py-2 text-right">{h.capacidad}</td>
                 <td className="px-4 py-2 text-right">{h.ocupantes}</td>
                 <td className="px-4 py-2">
@@ -194,7 +200,7 @@ export function HabitacionesClient({ habitaciones }: { habitaciones: HabitacionR
             ))}
             {habitaciones.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
+                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
                   No hay habitaciones todavía.
                 </td>
               </tr>

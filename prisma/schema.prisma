@@ -246,17 +246,21 @@ model Estancia {
   @@index([estado])
 }
 
-// Catálogo de habitaciones de la residencia (una sola sede, Granada). No
-// pertenece a ningún cliente: es configuración interna, la gestiona ADMIN.
+// Catálogo de habitaciones de la residencia. No pertenece a ningún cliente:
+// es configuración interna, la gestiona ADMIN. Cada habitación es de un
+// centro propio de Novaschool (hoy en la práctica todas son de Medina
+// Elvira, la única sede que tiene habitaciones).
 model Habitacion {
-  id        String   @id @default(cuid())
-  nombre    String
-  capacidad Int
-  activa    Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id               String           @id @default(cuid())
+  nombre           String
+  capacidad        Int
+  activa           Boolean          @default(true)
+  centroNovaschool CentroNovaschool @default(MEDINA_ELVIRA)
+  createdAt        DateTime         @default(now())
 
   participantes Participante[]
 
+  @@unique([centroNovaschool, nombre])
   @@index([activa])
 }
 
