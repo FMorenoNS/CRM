@@ -59,6 +59,11 @@ async function handlerPOST(request: Request) {
         d.presupuestoImporte !== ""
           ? d.presupuestoImporte
           : null,
+      // Si no se manda, se queda con el valor por defecto del schema (15).
+      reservaDias:
+        d.reservaDias !== undefined && d.reservaDias !== null && d.reservaDias !== ""
+          ? Number(d.reservaDias)
+          : undefined,
       notas: d.notas || null,
     },
   });

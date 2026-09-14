@@ -29,6 +29,8 @@ type DefaultValues = {
   fechaFin?: string | null;
   estado?: string;
   presupuestoImporte?: string | null;
+  reservaDias?: number | null;
+  reservaCreadaEn?: string | null;
   notas?: string | null;
 };
 
@@ -48,8 +50,21 @@ function readValues(form: HTMLFormElement) {
     fechaFin: (data.get("fechaFin") as string) ?? "",
     estado: (data.get("estado") as string) || undefined,
     presupuestoImporte: (data.get("presupuestoImporte") as string) ?? "",
+    reservaDias: (data.get("reservaDias") as string) ?? "",
     notas: (data.get("notas") as string) ?? "",
   };
+}
+
+/** Días y signo de cuánto falta (o cuánto se pasó) para que venza la reserva. */
+function calcularVencimientoReserva(
+  reservaCreadaEn: string | null | undefined,
+  reservaDias: number | null | undefined
+): { diasRestantes: number; vence: Date } | null {
+  if (!reservaCreadaEn || !reservaDias) return null;
+  const creada = new Date(reservaCreadaEn);
+  const vence = new Date(creada.getTime() + reservaDias * 86_400_000);
+  const diasRestantes = Math.ceil((vence.getTime() - Date.now()) / 86_400_000);
+  return { diasRestantes, vence };
 }
 
 // El último día del viaje no suma noche (solo se cuenta como día), p. ej.
@@ -90,6 +105,10 @@ export function EstanciaForm({
   const [fechaInicio, setFechaInicio] = useState(defaultValues?.fechaInicio ?? "");
   const [fechaFin, setFechaFin] = useState(defaultValues?.fechaFin ?? "");
   const diasNoches = calcularDiasNoches(fechaInicio, fechaFin);
+  const vencimientoReserva = calcularVencimientoReserva(
+    defaultValues?.reservaCreadaEn,
+    defaultValues?.reservaDias
+  );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -310,6 +329,42 @@ export function EstanciaForm({
           {diasNoches.dias} día{diasNoches.dias === 1 ? "" : "s"} ·{" "}
           {diasNoches.noches} noche{diasNoches.noches === 1 ? "" : "s"}
         </p>
+      )}
+
+      {mode === "edit" && (
+        <div className="flex flex-col gap-1">
+          <label htmlFor="reservaDias" className="text-sm font-medium text-gray-700">
+            Días que dura la reserva
+          </label>
+          <input
+            id="reservaDias"
+            name="reservaDias"
+            type="number"
+            min="1"
+            step="1"
+            disabled={readOnly}
+            defaultValue={defaultValues?.reservaDias ?? 15}
+            className={`${inputCls} max-w-[8rem]`}
+          />
+          <p className="text-xs text-gray-500">
+            El plazo empieza a contar solo en cuanto se envía el presupuesto al
+            cliente (no al guardar este número).
+          </p>
+          {vencimientoReserva && (
+            <p
+              className={`text-xs font-medium ${
+                vencimientoReserva.diasRestantes <= 2 ? "text-rose-700" : "text-gray-600"
+              }`}
+            >
+              Reserva vigente hasta el{" "}
+              {vencimientoReserva.vence.toLocaleDateString("es-ES")}
+              {vencimientoReserva.diasRestantes >= 0
+                ? ` (queda${vencimientoReserva.diasRestantes === 1 ? "" : "n"} ${vencimientoReserva.diasRestantes} día${vencimientoReserva.diasRestantes === 1 ? "" : "s"})`
+                : ` (venció hace ${-vencimientoReserva.diasRestantes} día${-vencimientoReserva.diasRestantes === 1 ? "" : "s"})`}
+              .
+            </p>
+          )}
+        </div>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

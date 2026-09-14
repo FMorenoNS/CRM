@@ -238,6 +238,10 @@ export async function buildEstanciaBloques({
               presupuestoImporte: estancia.presupuestoImporte
                 ? estancia.presupuestoImporte.toString()
                 : "",
+              reservaDias: estancia.reservaDias,
+              reservaCreadaEn: estancia.reservaCreadaEn
+                ? estancia.reservaCreadaEn.toISOString()
+                : null,
               notas: estancia.notas,
             }}
             presupuesto={presupuesto}
@@ -256,6 +260,7 @@ export async function buildEstanciaBloques({
             defaultEmail={estancia.centro.contactos[0]?.email ?? ""}
             documentos={documentos}
             presupuestoValidado={presupuestoValidado}
+            presupuestoExiste={Boolean(estancia.presupuesto)}
           />
         </div>
       </section>

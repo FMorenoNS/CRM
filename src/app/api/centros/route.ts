@@ -59,6 +59,8 @@ async function handlerPOST(request: Request) {
       tipo: d.tipo || "CENTRO",
       pais: d.pais,
       ciudad: d.ciudad || null,
+      vat: d.vat || null,
+      direccion: d.direccion || null,
       canalOrigen: d.canalOrigen || "Facebook",
       notas: d.notas || null,
       contactos:

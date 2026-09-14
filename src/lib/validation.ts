@@ -42,8 +42,20 @@ export const centroSchema = z.object({
   tipo: z.enum(["CENTRO", "PERSONA"]).optional().default("CENTRO"),
   pais: textoCorto().optional().default(""),
   ciudad: textoCorto().optional().nullable().or(z.literal("")),
+  vat: textoCorto(60).optional().nullable().or(z.literal("")),
+  direccion: textoCorto(300).optional().nullable().or(z.literal("")),
   canalOrigen: textoCorto().min(1).default("Facebook"),
   notas: z.string().trim().max(LARGO, "El texto es demasiado largo (máx. 5.000 caracteres).").optional().nullable(),
+});
+
+// Datos fiscales de cada centro propio de Novaschool (para el PDF del
+// presupuesto). Todo opcional: se rellena poco a poco desde Usuarios.
+export const centroNovaschoolInfoSchema = z.object({
+  centro: z.enum(["OPENWORLD", "MEDINA_ELVIRA", "ANORETA"]),
+  razonSocial: textoCorto(200).optional().nullable().or(z.literal("")),
+  cif: textoCorto(40).optional().nullable().or(z.literal("")),
+  oid: textoCorto(40).optional().nullable().or(z.literal("")),
+  direccion: textoCorto(300).optional().nullable().or(z.literal("")),
 });
 
 // Creación: además del centro, permite un contacto principal opcional, la
@@ -107,6 +119,12 @@ const estanciaBaseSchema = z.object({
   fechaFin: fechaOpcional,
   estado: z.enum(ESTADOS).optional(),
   presupuestoImporte: numeroOpcional,
+  // Días que dura la reserva provisional de plaza una vez enviado el
+  // presupuesto (el momento de envío lo pone el sistema, no este campo).
+  reservaDias: z
+    .union([z.number().int().min(1).max(365), z.string().max(10)])
+    .optional()
+    .nullable(),
   notas: z.string().trim().max(LARGO, "El texto es demasiado largo (máx. 5.000 caracteres).").optional().nullable(),
 });
 

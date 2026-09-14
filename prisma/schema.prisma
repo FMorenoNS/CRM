@@ -158,6 +158,11 @@ model Centro {
   tipo        TipoCliente @default(CENTRO)
   pais        String
   ciudad      String?
+  // VAT/NIF y dirección postal: hacen falta para rellenar el PDF del
+  // presupuesto (datos del colegio cliente). Opcionales porque los clientes
+  // ya existentes no los tienen todavía.
+  vat         String?
+  direccion   String?
   canalOrigen String      @default("Facebook")
   notas       String?
   createdAt   DateTime    @default(now())
@@ -170,6 +175,21 @@ model Centro {
 
   @@index([pais])
   @@index([nombre])
+}
+
+// Datos fiscales y de contacto de cada centro propio de Novaschool
+// (residencia), para rellenar el PDF del presupuesto: razón social, CIF,
+// código OID y dirección. Una fila por cada valor del enum, editable solo
+// por ADMIN desde Usuarios. Se guardan aparte de CentroNovaschool (que es
+// solo el enum) porque son datos reales de empresa, no algo que deba
+// inventarse en el código.
+model CentroNovaschoolInfo {
+  centro      CentroNovaschool @id
+  razonSocial String?
+  cif         String?
+  oid         String?
+  direccion   String?
+  updatedAt   DateTime         @updatedAt
 }
 
 model Contacto {
@@ -205,6 +225,14 @@ model Estancia {
   notas              String?
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
+
+  // Reserva provisional de plaza: días que dura desde que se envía el
+  // presupuesto (editable, con un valor por defecto razonable) y el momento
+  // en que ese envío ocurrió (lo pone el sistema solo, cada vez que el
+  // presupuesto se manda al cliente). Con los dos se calcula cuándo vence y
+  // se avisa en el Panel cuando quedan 2 días o menos.
+  reservaDias     Int?      @default(15)
+  reservaCreadaEn DateTime?
 
   interacciones      Interaccion[]
   documentosEnviados DocumentoEnviado[]
@@ -339,6 +367,10 @@ model Presupuesto {
   id         String   @id @default(cuid())
   estanciaId String   @unique
   estancia   Estancia @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+
+  // Numeración correlativa del presupuesto (el "BUDGET NO." del PDF), propia
+  // e independiente del id interno.
+  numero Int @unique @default(autoincrement())
 
   // El grupo con el que se calculó. Los monitores no cuentan como personas
   // para el precio por persona: solo alumnos y profesores.

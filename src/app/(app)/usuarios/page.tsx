@@ -3,13 +3,19 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { UsuariosClient, type UsuarioRow } from "./usuarios-client";
 import { ApiKeysClient, type ApiKeyRow } from "./api-keys-client";
+import {
+  CentrosNovaschoolClient,
+  type CentroNovaschoolInfoRow,
+} from "./centros-novaschool-client";
+
+const CENTROS_NOVASCHOOL = ["OPENWORLD", "MEDINA_ELVIRA", "ANORETA"] as const;
 
 export default async function UsuariosPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.role !== "ADMIN") redirect("/");
 
-  const [usuariosRaw, clientes, apiKeysRaw] = await Promise.all([
+  const [usuariosRaw, clientes, apiKeysRaw, centrosNovaschoolRaw] = await Promise.all([
     prisma.user.findMany({
       orderBy: { createdAt: "asc" },
       select: {
@@ -30,7 +36,20 @@ export default async function UsuariosPage() {
       orderBy: { createdAt: "desc" },
       include: { user: { select: { nombre: true } } },
     }),
+    prisma.centroNovaschoolInfo.findMany(),
   ]);
+
+  const infoPorCentro = new Map(centrosNovaschoolRaw.map((f) => [f.centro, f]));
+  const centrosNovaschool: CentroNovaschoolInfoRow[] = CENTROS_NOVASCHOOL.map((centro) => {
+    const f = infoPorCentro.get(centro);
+    return {
+      centro,
+      razonSocial: f?.razonSocial ?? null,
+      cif: f?.cif ?? null,
+      oid: f?.oid ?? null,
+      direccion: f?.direccion ?? null,
+    };
+  });
 
   const usuarios: UsuarioRow[] = usuariosRaw.map((u) => ({
     id: u.id,
@@ -81,6 +100,20 @@ export default async function UsuariosPage() {
               .filter((u) => u.activo)
               .map((u) => ({ id: u.id, nombre: u.nombre, role: u.role }))}
           />
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-xl font-semibold text-gray-900">
+          Centros Novaschool
+        </h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Razón social, CIF, código OID y dirección de cada centro propio.
+          Se usan para rellenar el PDF del presupuesto cuando ese centro
+          acoge al grupo.
+        </p>
+        <div className="mt-6">
+          <CentrosNovaschoolClient filas={centrosNovaschool} />
         </div>
       </div>
     </div>

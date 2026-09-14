@@ -8,10 +8,12 @@ import { canDoOperational, forbidden } from "@/lib/permissions";
 import { comprobarLimiteMemoria } from "@/lib/rate-limit";
 import { DEMASIADO_GRANDE, readJsonBody } from "@/lib/request";
 import { withApi } from "@/lib/http";
+import { construirDatosPresupuestoPdf, generarPresupuestoPdf } from "@/lib/presupuesto-pdf";
 
 const schema = z.object({
   tipo: z.enum(["PRESUPUESTO", "CONTRATO"]),
   destinatario: z.string().email("Email de destinatario inválido."),
+  idioma: z.enum(["es", "en"]).optional().default("en"),
 });
 
 async function handlerPOST(
@@ -84,10 +86,26 @@ async function handlerPOST(
   }
 
   try {
+    // El presupuesto se adjunta como PDF real (con los datos de la
+    // estancia ya rellenos); el contrato, de momento, sigue sin adjunto.
+    let attachment: { filename: string; contentBase64: string; contentType: string } | undefined;
+    if (parsed.data.tipo === "PRESUPUESTO") {
+      const datosPdf = await construirDatosPresupuestoPdf(estanciaId, parsed.data.idioma);
+      if (datosPdf) {
+        const pdf = await generarPresupuestoPdf(datosPdf);
+        attachment = {
+          filename: `presupuesto-${datosPdf.numero}.pdf`,
+          contentBase64: pdf.toString("base64"),
+          contentType: "application/pdf",
+        };
+      }
+    }
+
     await sendDocumentEmail({
       to: parsed.data.destinatario,
       subject: `Novaschool Granada: ${label}`,
       bodyHtml: `<p>Estimado/a,</p><p>Adjuntamos el ${label} para su programa de movilidad Erasmus+ en nuestra residencia de Granada.</p><p>Un saludo,<br/>Novaschool</p>`,
+      attachment,
     });
 
     await prisma.documentoEnviado.create({
@@ -99,6 +117,16 @@ async function handlerPOST(
         exito: true,
       },
     });
+
+    // La reserva provisional de plaza "se genera" (o se renueva) en cuanto
+    // el presupuesto se manda de verdad al cliente: es el momento en el que
+    // empieza a correr el plazo antes de que la plaza se libere.
+    if (parsed.data.tipo === "PRESUPUESTO") {
+      await prisma.estancia.update({
+        where: { id: estanciaId },
+        data: { reservaCreadaEn: new Date() },
+      });
+    }
 
     if (estancia) {
       await registrarHistorial({

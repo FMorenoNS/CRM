@@ -17,6 +17,7 @@ export function EnviarDocumento({
   defaultEmail,
   documentos,
   presupuestoValidado,
+  presupuestoExiste,
 }: {
   estanciaId: string;
   emailConfigured: boolean;
@@ -25,12 +26,16 @@ export function EnviarDocumento({
   // El presupuesto necesita el visto bueno de otra persona antes de poder
   // mandarlo al cliente. El contrato no pasa por esto.
   presupuestoValidado: boolean;
+  // Para poder descargar el PDF sin necesidad de que esté validado ni de
+  // que el correo esté configurado: es una consulta interna, no un envío.
+  presupuestoExiste: boolean;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string>();
   const [ok, setOk] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [tipo, setTipo] = useState<"PRESUPUESTO" | "CONTRATO">("PRESUPUESTO");
+  const [idioma, setIdioma] = useState<"es" | "en">("en");
 
   const bloqueadoPorValidar = tipo === "PRESUPUESTO" && !presupuestoValidado;
 
@@ -43,6 +48,7 @@ export function EnviarDocumento({
     const values = {
       tipo: (data.get("tipo") as string) ?? "PRESUPUESTO",
       destinatario: (data.get("destinatario") as string) ?? "",
+      idioma: (data.get("idioma") as string) ?? "en",
     };
     try {
       const res = await fetch(`/api/estancias/${estanciaId}/enviar-documento`, {
@@ -66,6 +72,27 @@ export function EnviarDocumento({
 
   return (
     <div className="flex flex-col gap-4">
+      {presupuestoExiste && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-gray-600">Descargar presupuesto en:</span>
+          <select
+            value={idioma}
+            onChange={(e) => setIdioma(e.target.value as "es" | "en")}
+            className="rounded border border-gray-300 px-2 py-1 text-xs"
+            aria-label="Idioma del PDF"
+          >
+            <option value="en">Inglés</option>
+            <option value="es">Español</option>
+          </select>
+          <a
+            href={`/api/estancias/${estanciaId}/presupuesto/pdf?idioma=${idioma}`}
+            className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-brand-navy hover:bg-gray-100"
+          >
+            Descargar PDF
+          </a>
+        </div>
+      )}
+
       {documentos.length > 0 && (
         <ul className="flex flex-col gap-1 text-sm">
           {documentos.map((d) => (
@@ -107,6 +134,7 @@ export function EnviarDocumento({
           onSubmit={handleSubmit}
           className="flex max-w-md flex-col gap-3 rounded border border-gray-200 bg-white p-4"
         >
+          <input type="hidden" name="idioma" value={idioma} />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <select
               name="tipo"

@@ -1,11 +1,17 @@
 import { prisma } from "@/lib/prisma";
-import { ESTADO_LABELS, INTERACCION_LABELS, DOCUMENTO_LABELS } from "@/lib/labels";
+import {
+  ESTADO_LABELS,
+  ESTADOS_CONTRATADOS,
+  INTERACCION_LABELS,
+  DOCUMENTO_LABELS,
+} from "@/lib/labels";
 import { centroVisibilityFilter } from "@/lib/permissions";
 import type { SessionUser } from "@/lib/session";
 
 export const DIAS_SEGUIMIENTO = 3; // a partir de aquí, "hay que hacer algo"
 export const DIAS_ABANDONO = 15; // a partir de aquí, "esto probablemente está muerto"
 export const DIAS_PROXIMA = 21; // 3 semanas: avisar si el viaje se acerca sin cerrar
+export const DIAS_AVISO_RESERVA = 2; // a partir de aquí, avisar de que la reserva está a punto de vencer
 
 // Estados donde tiene sentido "molestar" por inactividad: el trato sigue
 // abierto y depende de que alguien responda. CONTRATO_FIRMADO y ALOJADO se
@@ -69,6 +75,7 @@ export type Tareas = {
   contratoPendienteFirma: TareaItem[];
   proximas: TareaItem[];
   abandonadas: AlertaItem[];
+  reservasPorVencer: AlertaItem[];
   documentosFallidos: DocumentoFallidoItem[];
   totalTareas: number;
   totalAlertas: number;
@@ -87,7 +94,7 @@ export async function getTareas(session: SessionUser): Promise<Tareas> {
   const enTresSemanas = new Date(ahora + DIAS_PROXIMA * 86_400_000);
   const contactosSelect = { orderBy: { createdAt: "asc" as const }, take: 1 };
 
-  const [porContactarRaw, enCursoRaw, proximasRaw, documentosFallidosRaw] =
+  const [porContactarRaw, enCursoRaw, proximasRaw, reservasRaw, documentosFallidosRaw] =
     await Promise.all([
       // Interesados a los que aún no hemos llamado.
       prisma.estancia.findMany({
@@ -125,6 +132,19 @@ export async function getTareas(session: SessionUser): Promise<Tareas> {
           centro: { select: { id: true, nombre: true, contactos: contactosSelect } },
         },
         orderBy: { fechaInicio: "asc" },
+      }),
+      // Reserva provisional (desde que se envía el presupuesto) a punto de
+      // vencer o ya vencida, y todavía sin contrato firmado ni perdida.
+      prisma.estancia.findMany({
+        where: {
+          activo: true,
+          reservaCreadaEn: { not: null },
+          estado: { notIn: [...ESTADOS_CONTRATADOS, "PERDIDO"] },
+          centro: visibilidad,
+        },
+        include: {
+          centro: { select: { id: true, nombre: true, contactos: contactosSelect } },
+        },
       }),
       // Envíos de presupuesto/contrato que fallaron.
       prisma.documentoEnviado.findMany({
@@ -225,6 +245,24 @@ export async function getTareas(session: SessionUser): Promise<Tareas> {
     };
   });
 
+  const reservasPorVencer: AlertaItem[] = [];
+  for (const e of reservasRaw) {
+    const dias = e.reservaDias ?? 15;
+    const vence = new Date(e.reservaCreadaEn!.getTime() + dias * 86_400_000);
+    const diasRestantes = Math.ceil((vence.getTime() - ahora) / 86_400_000);
+    if (diasRestantes > DIAS_AVISO_RESERVA) continue;
+    reservasPorVencer.push({
+      key: e.id,
+      href: `/centros/${e.centro.id}?estancia=${e.id}`,
+      centroNombre: e.centro.nombre,
+      contacto: e.centro.contactos[0],
+      detalle:
+        diasRestantes >= 0
+          ? `Queda${diasRestantes === 1 ? "" : "n"} ${diasRestantes} día${diasRestantes === 1 ? "" : "s"} para que expire la reserva: contacta para que firme el contrato.`
+          : `La reserva expiró hace ${-diasRestantes} día${-diasRestantes === 1 ? "" : "s"}: contacta para que firme el contrato.`,
+    });
+  }
+
   const documentosFallidos: DocumentoFallidoItem[] = documentosFallidosRaw.map((d) => ({
     key: d.id,
     href: `/centros/${d.estancia.centro.id}?estancia=${d.estanciaId}`,
@@ -233,7 +271,8 @@ export async function getTareas(session: SessionUser): Promise<Tareas> {
   }));
 
   const totalTareas = idsPrincipales.size;
-  const totalAlertas = totalTareas + abandonadas.length + documentosFallidos.length;
+  const totalAlertas =
+    totalTareas + abandonadas.length + reservasPorVencer.length + documentosFallidos.length;
 
   return {
     porContactar,
@@ -242,6 +281,7 @@ export async function getTareas(session: SessionUser): Promise<Tareas> {
     contratoPendienteFirma,
     proximas,
     abandonadas,
+    reservasPorVencer,
     documentosFallidos,
     totalTareas,
     totalAlertas,

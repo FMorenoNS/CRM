@@ -71,6 +71,10 @@ async function handlerPATCH(
         d.presupuestoImporte !== ""
           ? d.presupuestoImporte
           : null,
+      reservaDias:
+        d.reservaDias !== undefined && d.reservaDias !== null && d.reservaDias !== ""
+          ? Number(d.reservaDias)
+          : null,
       notas: d.notas || null,
     },
   });

@@ -15,6 +15,8 @@ type DefaultValues = {
   tipo?: string;
   pais?: string;
   ciudad?: string | null;
+  vat?: string | null;
+  direccion?: string | null;
   canalOrigen?: string | null;
   notas?: string | null;
 };
@@ -107,6 +109,32 @@ function CentroFields({
           />
         </div>
       </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-1">
+          <label htmlFor="vat" className="text-sm font-medium text-gray-700">
+            NIF/VAT
+          </label>
+          <input
+            id="vat"
+            name="vat"
+            disabled={disabled}
+            defaultValue={defaultValues?.vat ?? ""}
+            className={inputCls}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="direccion" className="text-sm font-medium text-gray-700">
+            Dirección
+          </label>
+          <input
+            id="direccion"
+            name="direccion"
+            disabled={disabled}
+            defaultValue={defaultValues?.direccion ?? ""}
+            className={inputCls}
+          />
+        </div>
+      </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="canalOrigen" className="text-sm font-medium text-gray-700">
           Canal de origen
@@ -155,6 +183,8 @@ export function CentroCreateForm() {
       tipo: (d.get("tipo") as string) || "CENTRO",
       pais: (d.get("pais") as string) ?? "",
       ciudad: (d.get("ciudad") as string) ?? "",
+      vat: (d.get("vat") as string) ?? "",
+      direccion: (d.get("direccion") as string) ?? "",
       canalOrigen: (d.get("canalOrigen") as string) || "Facebook",
       notas: (d.get("notas") as string) ?? "",
       contactoNombre: (d.get("contactoNombre") as string) ?? "",
@@ -400,6 +430,8 @@ export function CentroEditForm({
       tipo: (d.get("tipo") as string) || "CENTRO",
       pais: (d.get("pais") as string) ?? "",
       ciudad: (d.get("ciudad") as string) ?? "",
+      vat: (d.get("vat") as string) ?? "",
+      direccion: (d.get("direccion") as string) ?? "",
       canalOrigen: (d.get("canalOrigen") as string) || "Facebook",
       notas: (d.get("notas") as string) ?? "",
     };

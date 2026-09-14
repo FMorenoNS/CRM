@@ -50,6 +50,8 @@ async function handlerPATCH(
       tipo: parsed.data.tipo || "CENTRO",
       pais: parsed.data.pais,
       ciudad: parsed.data.ciudad || null,
+      vat: parsed.data.vat || null,
+      direccion: parsed.data.direccion || null,
       canalOrigen: parsed.data.canalOrigen || "Facebook",
       notas: parsed.data.notas || null,
     },

@@ -28,6 +28,7 @@ export default async function TareasPage() {
   const sinNada =
     tareas.totalTareas === 0 &&
     tareas.abandonadas.length === 0 &&
+    tareas.reservasPorVencer.length === 0 &&
     tareas.documentosFallidos.length === 0;
 
   return (
@@ -91,6 +92,35 @@ export default async function TareasPage() {
                   contacto={i.contacto}
                   detalle={i.detalle}
                   tone="rose"
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {tareas.reservasPorVencer.length > 0 && (
+        <section className="rounded-lg border border-indigo-200 bg-indigo-50 p-5">
+          <h2 className="text-base font-semibold text-indigo-900">
+            ⏰ Reservas a punto de vencer
+            <span className="ml-2 rounded-full bg-indigo-200 px-2 py-0.5 text-xs font-medium text-indigo-800">
+              {tareas.reservasPorVencer.length}
+            </span>
+          </h2>
+          <p className="mt-1 text-sm text-indigo-800">
+            El presupuesto se envió hace tiempo y la plaza reservada está a
+            punto de liberarse. Contacta con el cliente para que firme el
+            contrato.
+          </p>
+          <ul className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {tareas.reservasPorVencer.map((i) => (
+              <li key={i.key}>
+                <StaticTaskCard
+                  href={i.href}
+                  centroNombre={i.centroNombre}
+                  contacto={i.contacto}
+                  detalle={i.detalle}
+                  tone="indigo"
                 />
               </li>
             ))}

@@ -18,12 +18,14 @@ const TONE_BORDER = {
   amber: "border-amber-200 hover:border-amber-400",
   rose: "border-rose-200 hover:border-rose-400",
   slate: "border-slate-200 hover:border-slate-400",
+  indigo: "border-indigo-200 hover:border-indigo-400",
 };
 
 const TONE_TEXT = {
   amber: "text-amber-700",
   rose: "text-rose-700",
   slate: "text-slate-600",
+  indigo: "text-indigo-700",
 };
 
 // Tarjeta estática de una alerta (abandono / envío fallido): informativa,
@@ -39,7 +41,7 @@ export function StaticTaskCard({
   centroNombre: string;
   contacto: Contacto;
   detalle: string;
-  tone: "amber" | "rose" | "slate";
+  tone: "amber" | "rose" | "slate" | "indigo";
 }) {
   return (
     <Link

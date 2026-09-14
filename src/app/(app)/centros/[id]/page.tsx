@@ -121,6 +121,8 @@ export default async function CentroDetailPage({
               tipo: centro.tipo,
               pais: centro.pais,
               ciudad: centro.ciudad,
+              vat: centro.vat,
+              direccion: centro.direccion,
               canalOrigen: centro.canalOrigen,
               notas: centro.notas,
             }}
