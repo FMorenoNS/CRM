@@ -19,6 +19,10 @@ import { useConfirm } from "@/app/(app)/confirm-dialog";
 
 const CENTROS_NOVASCHOOL = ["OPENWORLD", "MEDINA_ELVIRA", "ANORETA"] as const;
 
+// Productos fijos de la casa: entran marcados desde el principio en toda
+// oferta nueva (se pueden desmarcar si no aplican).
+const PRODUCTOS_FIJOS = ["MONITORES", "MATERIALES", "INSTALACIONES"];
+
 /** Presupuesto ya guardado, tal como lo devuelve el servidor. */
 export type PresupuestoGuardado = {
   numAlumnos: number;
@@ -258,16 +262,18 @@ function Calculadora({
           dias: guardada.dias,
           cantidad: guardada.cantidad,
         };
-      } else if (c.codigo === "MONITORES") {
-        // Contratar monitores es obligatorio: entran marcados de fábrica,
-        // con 1 de cantidad (no el grupo entero, que no son personas) y los
-        // días de la estancia. Todo esto se puede seguir tocando a mano.
+      } else if (PRODUCTOS_FIJOS.includes(c.codigo)) {
+        // Monitores, Materiales e Instalaciones entran marcados de fábrica:
+        // "fijos" es que empiezan puestos, no que estén bloqueados, se
+        // pueden desmarcar o tocar como cualquier otro concepto. Los
+        // monitores no cuentan como personas: empiezan en 1, no en el grupo
+        // entero; Materiales e Instalaciones sí siguen al grupo.
         const def = valoresPorDefecto(c.unidad, ctx);
         inicial[c.codigo] = {
           incluida: true,
           precioUnitario: c.precio,
           dias: def.dias,
-          cantidad: 1,
+          cantidad: c.codigo === "MONITORES" ? 1 : def.cantidad,
         };
       } else {
         const def = valoresPorDefecto(c.unidad, ctx);
