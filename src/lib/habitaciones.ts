@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
-type Rol = "ALUMNOS" | "PROFESORES";
+export type Rol = "ALUMNOS" | "PROFESORES";
 
 function seSolapan(
   fechaInicio: Date | null,
@@ -79,4 +79,66 @@ export async function rolQueOcupa(
   if (roles.size === 0) return null;
   if (roles.size > 1) return "MIXTA";
   return [...roles][0] as Rol;
+}
+
+export type MetodoLlenado = "DOS" | "TRES" | "MAXIMA";
+
+export type EstadoHabitacion = {
+  id: string;
+  // Plazas libres en esas fechas, ya restadas las de otras asignaciones.
+  libres: number;
+  // Rol que ya ocupa la habitación en esas fechas (cierra la habitación al
+  // otro rol aunque le sobre capacidad), "MIXTA" si por lo que sea ya tiene
+  // los dos (se trata igual: cerrada para cualquier rol), o null si está
+  // vacía.
+  rol: Rol | "MIXTA" | null;
+  tieneNevera: boolean;
+};
+
+// Cuántas plazas nuevas toma como máximo cada habitación en una pasada de
+// reparto, según el método de llenado elegido.
+function limitePorHabitacion(metodo: MetodoLlenado): number {
+  switch (metodo) {
+    case "DOS":
+      return 2;
+    case "TRES":
+      return 3;
+    case "MAXIMA":
+      return Infinity;
+  }
+}
+
+/**
+ * Reparte `cantidad` personas de un rol entre habitaciones con plazas
+ * libres: no mezcla alumnos y profesores (una habitación que ya se usó para
+ * un rol en este reparto queda cerrada al otro, aunque le sobre capacidad
+ * física) y respeta que las habitaciones con nevera son solo para
+ * profesorado. `metodo` limita cuántas plazas nuevas toma cada habitación en
+ * esta pasada (2, 3 o todas las que tenga libres).
+ *
+ * Modifica `habitaciones` in place (resta las plazas tomadas y marca el
+ * rol) para que un reparto posterior en la misma llamada (p. ej. primero
+ * alumnos y luego profesores) vea el estado ya actualizado. Devuelve el id
+ * de habitación asignado a cada persona, en orden.
+ */
+export function repartirEnHabitaciones(
+  habitaciones: EstadoHabitacion[],
+  rol: Rol,
+  cantidad: number,
+  metodo: MetodoLlenado
+): string[] {
+  const limite = limitePorHabitacion(metodo);
+  const asignados: string[] = [];
+  for (const h of habitaciones) {
+    if (asignados.length >= cantidad) break;
+    if (h.rol !== null && h.rol !== rol) continue;
+    if (rol === "PROFESORES" && !h.tieneNevera) continue;
+    if (rol === "ALUMNOS" && h.tieneNevera) continue;
+    const disponibleEnEstaPasada = Math.min(h.libres, limite);
+    const toma = Math.min(disponibleEnEstaPasada, cantidad - asignados.length);
+    for (let i = 0; i < toma; i++) asignados.push(h.id);
+    h.libres -= toma;
+    if (toma > 0) h.rol = rol;
+  }
+  return asignados;
 }

@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/api-auth";
+import { metodoLlenadoSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
 import { canDoOperational, forbidden } from "@/lib/permissions";
-import { plazasLibres, rolQueOcupa } from "@/lib/habitaciones";
+import {
+  plazasLibres,
+  repartirEnHabitaciones,
+  rolQueOcupa,
+  type EstadoHabitacion,
+} from "@/lib/habitaciones";
 
 // Genera de golpe la lista de participantes de una estancia (uno por cada
 // alumno y cada profesor de "Número de alumnos"/"Número de profesores") y
@@ -28,6 +34,10 @@ export async function POST(
     return NextResponse.json({ error: "No encontrada." }, { status: 404 });
   }
   if (!canDoOperational(user, estancia.centroId)) return forbidden();
+
+  const body = await request.json().catch(() => ({}));
+  const parsedMetodo = metodoLlenadoSchema.safeParse(body ?? {});
+  const metodo = parsedMetodo.success ? parsedMetodo.data.metodo : "MAXIMA";
 
   if (estancia._count.participantes > 0) {
     return NextResponse.json(
@@ -59,7 +69,7 @@ export async function POST(
   // Estado de partida de cada habitación: plazas libres y, si ya tiene
   // ocupantes en esas fechas, de qué rol son (esa habitación queda cerrada
   // al otro rol aunque le sobre capacidad).
-  const habitaciones = await Promise.all(
+  const habitaciones: EstadoHabitacion[] = await Promise.all(
     habitacionesActivas.map(async (h) => ({
       id: h.id,
       libres: Math.max(
@@ -67,27 +77,21 @@ export async function POST(
         await plazasLibres(h.id, estancia.fechaInicio, estancia.fechaFin)
       ),
       rol: await rolQueOcupa(h.id, estancia.fechaInicio, estancia.fechaFin),
+      tieneNevera: h.tieneNevera,
     }))
   );
 
-  // Reparto en dos pasadas (alumnos y luego profesores) para no mezclar:
-  // una habitación que ya se usó para un rol en esta simulación deja de
-  // estar disponible para el otro, aunque le quede sitio físico.
-  function repartir(rol: "ALUMNOS" | "PROFESORES", cantidad: number) {
-    const asignados: string[] = [];
-    for (const h of habitaciones) {
-      if (asignados.length >= cantidad) break;
-      if (h.rol !== null && h.rol !== rol) continue; // ocupada por el otro rol
-      const toma = Math.min(h.libres, cantidad - asignados.length);
-      for (let i = 0; i < toma; i++) asignados.push(h.id);
-      h.libres -= toma;
-      if (toma > 0) h.rol = rol;
-    }
-    return asignados;
-  }
-
-  const habitacionesAlumnos = repartir("ALUMNOS", nAlumnos);
-  const habitacionesProfesores = repartir("PROFESORES", nProfesores);
+  // Reparto en dos pasadas (alumnos y luego profesores) para no mezclar: una
+  // habitación que ya se usó para un rol en este reparto deja de estar
+  // disponible para el otro, aunque le quede sitio físico. Las de
+  // profesorado (con nevera) quedan reservadas para profesores.
+  const habitacionesAlumnos = repartirEnHabitaciones(habitaciones, "ALUMNOS", nAlumnos, metodo);
+  const habitacionesProfesores = repartirEnHabitaciones(
+    habitaciones,
+    "PROFESORES",
+    nProfesores,
+    metodo
+  );
 
   if (habitacionesAlumnos.length < nAlumnos || habitacionesProfesores.length < nProfesores) {
     return NextResponse.json(

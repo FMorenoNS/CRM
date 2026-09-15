@@ -363,14 +363,49 @@ function ParticipanteRow({
   );
 }
 
+export type MetodoLlenado = "DOS" | "TRES" | "MAXIMA";
+
+const METODO_LLENADO_LABELS: Record<MetodoLlenado, string> = {
+  DOS: "De dos en dos por habitación",
+  TRES: "De tres en tres por habitación",
+  MAXIMA: "Al máximo de cada habitación",
+};
+
+function SelectorMetodoLlenado({
+  metodo,
+  onChange,
+}: {
+  metodo: MetodoLlenado;
+  onChange: (m: MetodoLlenado) => void;
+}) {
+  return (
+    <label className="flex flex-col gap-1 text-xs text-gray-600">
+      Método de llenado
+      <select
+        value={metodo}
+        onChange={(e) => onChange(e.target.value as MetodoLlenado)}
+        className="rounded border border-gray-300 px-2 py-1 text-sm text-gray-700"
+      >
+        {(Object.keys(METODO_LLENADO_LABELS) as MetodoLlenado[]).map((m) => (
+          <option key={m} value={m}>
+            {METODO_LLENADO_LABELS[m]}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function AutocompletarPanel({
   estanciaId,
   necesarios,
   totalLibres,
+  metodo,
 }: {
   estanciaId: string;
   necesarios: { alumnos: number; profesores: number };
   totalLibres: number;
+  metodo: MetodoLlenado;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string>();
@@ -383,6 +418,8 @@ function AutocompletarPanel({
     try {
       const res = await fetch(`/api/estancias/${estanciaId}/participantes/autocompletar`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ metodo }),
       });
       const result = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -421,6 +458,74 @@ function AutocompletarPanel({
   );
 }
 
+function AsignarHabitacionesPanel({
+  estanciaId,
+  metodo,
+  cantidad,
+}: {
+  estanciaId: string;
+  metodo: MetodoLlenado;
+  cantidad: number;
+}) {
+  const router = useRouter();
+  const [error, setError] = useState<string>();
+  const [aviso, setAviso] = useState<string>();
+  const [isPending, setIsPending] = useState(false);
+
+  async function asignar() {
+    setError(undefined);
+    setAviso(undefined);
+    setIsPending(true);
+    try {
+      const res = await fetch(
+        `/api/estancias/${estanciaId}/participantes/asignar-habitaciones`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ metodo }),
+        }
+      );
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(result.error ?? "No se pudo asignar.");
+        return;
+      }
+      if (result.sinAsignar > 0) {
+        setAviso(
+          `Asignados ${result.asignados}. Quedan ${result.sinAsignar} sin habitación (no hay plazas libres compatibles en esas fechas).`
+        );
+      }
+      router.refresh();
+    } catch {
+      setError("No se pudo conectar con el servidor.");
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  return (
+    <div className="mb-3 flex flex-col gap-2 rounded border border-dashed border-gray-300 bg-gray-50 p-3 text-sm">
+      <p className="text-gray-700">
+        {cantidad} participante(s) sin habitación asignada.
+      </p>
+      <button
+        type="button"
+        onClick={asignar}
+        disabled={isPending}
+        className="self-start rounded border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+      >
+        {isPending ? "Asignando..." : "Asignar habitaciones a quien no tiene"}
+      </button>
+      {aviso && !error && <p className="text-amber-700">{aviso}</p>}
+      {error && (
+        <p className="text-red-600" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function Participantes({
   estanciaId,
   participantes,
@@ -440,6 +545,7 @@ export function Participantes({
   const { confirmar, dialogo } = useConfirm();
   const [error, setError] = useState<string>();
   const [isPending, setIsPending] = useState(false);
+  const [metodo, setMetodo] = useState<MetodoLlenado>("MAXIMA");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -490,14 +596,28 @@ export function Participantes({
 
   const necesitaAutocompletar =
     participantes.length === 0 && necesarios.alumnos + necesarios.profesores > 0;
+  const sinHabitacion = participantes.filter((p) => !p.habitacionId).length;
 
   return (
     <div>
+      {(necesitaAutocompletar || sinHabitacion > 0) && (
+        <div className="mb-3">
+          <SelectorMetodoLlenado metodo={metodo} onChange={setMetodo} />
+        </div>
+      )}
       {necesitaAutocompletar && (
         <AutocompletarPanel
           estanciaId={estanciaId}
           necesarios={necesarios}
           totalLibres={totalLibres}
+          metodo={metodo}
+        />
+      )}
+      {sinHabitacion > 0 && (
+        <AsignarHabitacionesPanel
+          estanciaId={estanciaId}
+          metodo={metodo}
+          cantidad={sinHabitacion}
         />
       )}
       <ul className="flex flex-col gap-2">

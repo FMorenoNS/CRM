@@ -212,6 +212,12 @@ export const habitacionSchema = z.object({
 
 export const updateHabitacionSchema = habitacionSchema.partial();
 
+// Cómo repartir a los participantes al asignar habitaciones automáticamente:
+// de dos en dos, de tres en tres, o llenando cada una al máximo.
+export const metodoLlenadoSchema = z.object({
+  metodo: z.enum(["DOS", "TRES", "MAXIMA"]).optional().default("MAXIMA"),
+});
+
 export const participanteSchema = z.object({
   nombre: z.string().trim().min(1, "El nombre es obligatorio."),
   rol: z.enum(["ALUMNOS", "PROFESORES"]),
