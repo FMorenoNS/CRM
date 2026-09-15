@@ -81,12 +81,13 @@ type HabitacionDia = {
   ocupantes: OcupanteDia[];
 };
 
-type Vista = "habitacion" | "cliente" | "comedor";
+type Vista = "habitacion" | "cliente" | "comedor" | "plano";
 
 const VISTAS: { id: Vista; label: string }[] = [
   { id: "habitacion", label: "Por habitación" },
   { id: "cliente", label: "Por cliente" },
   { id: "comedor", label: "Comedor" },
+  { id: "plano", label: "Plano" },
 ];
 
 function formatFechaLarga(fechaISO: string): string {
@@ -221,6 +222,81 @@ function VistaComedor({ ocupantes }: { ocupantes: OcupanteDia[] }) {
   );
 }
 
+// Planta a la que pertenece una habitación, a partir de su número (101 →
+// planta 1, 215 → planta 2...): es el mismo criterio que ya se usa al
+// nombrar las habitaciones, no hace falta guardarlo aparte.
+function plantaDe(nombre: string): number {
+  const n = Number(nombre);
+  return Number.isFinite(n) ? Math.floor(n / 100) : 0;
+}
+
+function agruparPorPlanta(
+  habitaciones: HabitacionDia[]
+): { planta: number; habitaciones: HabitacionDia[] }[] {
+  const mapa = new Map<number, HabitacionDia[]>();
+  for (const h of habitaciones) {
+    const planta = plantaDe(h.nombre);
+    const grupo = mapa.get(planta);
+    if (grupo) grupo.push(h);
+    else mapa.set(planta, [h]);
+  }
+  return [...mapa.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([planta, hs]) => ({
+      planta,
+      habitaciones: [...hs].sort((a, b) =>
+        a.nombre.localeCompare(b.nombre, undefined, { numeric: true })
+      ),
+    }));
+}
+
+// Caja de una habitación en el esquema: no calca el plano real del
+// edificio, es una rejilla ordenada por número con el mismo código de color
+// que ya usa el calendario (verde/ámbar/rojo según ocupación).
+function CajaHabitacion({ habitacion }: { habitacion: HabitacionDia }) {
+  const ocupados = habitacion.ocupantes.filter((o) => o.confirmado).length;
+  const reservados = habitacion.ocupantes.length - ocupados;
+  const nombres = habitacion.ocupantes.map((o) => o.nombre).join(", ");
+  return (
+    <div
+      title={nombres || "Libre"}
+      className={`flex flex-col items-center justify-center gap-0.5 rounded border border-black/5 px-1 py-2 text-center ${tonoOcupacion(
+        ocupados,
+        habitacion.capacidad
+      )}`}
+    >
+      <p className="text-xs font-semibold">{habitacion.nombre}</p>
+      <p className="text-[11px] leading-tight">
+        {ocupados}/{habitacion.capacidad}
+        {reservados > 0 && <span className="text-sky-700"> +{reservados}</span>}
+      </p>
+    </div>
+  );
+}
+
+function VistaPlano({ habitaciones }: { habitaciones: HabitacionDia[] }) {
+  const plantas = agruparPorPlanta(habitaciones);
+  return (
+    <div className="flex flex-col gap-5">
+      {plantas.map((p) => (
+        <div key={p.planta}>
+          <h3 className="text-sm font-medium text-gray-700">
+            Planta {p.planta} <span className="font-normal text-gray-400">({p.habitaciones.length})</span>
+          </h3>
+          <div className="mt-2 grid grid-cols-5 gap-1.5 sm:grid-cols-7">
+            {p.habitaciones.map((h) => (
+              <CajaHabitacion key={h.id} habitacion={h} />
+            ))}
+          </div>
+        </div>
+      ))}
+      {plantas.length === 0 && (
+        <p className="text-sm text-gray-500">No hay habitaciones activas.</p>
+      )}
+    </div>
+  );
+}
+
 function DetalleDia({ fecha }: { fecha: string }) {
   const [habitaciones, setHabitaciones] = useState<HabitacionDia[] | null>(null);
   const [error, setError] = useState<string>();
@@ -281,6 +357,7 @@ function DetalleDia({ fecha }: { fecha: string }) {
           {vista === "habitacion" && <VistaPorHabitacion habitaciones={habitaciones} />}
           {vista === "cliente" && <VistaPorCliente ocupantes={ocupantes} />}
           {vista === "comedor" && <VistaComedor ocupantes={ocupantes} />}
+          {vista === "plano" && <VistaPlano habitaciones={habitaciones} />}
         </>
       )}
     </div>
