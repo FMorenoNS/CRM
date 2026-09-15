@@ -64,6 +64,14 @@ enum TipoProyecto {
   PRIVADO
 }
 
+// Duración de la estancia: corta (3 meses o menos) o larga (más de 3
+// meses). Se recalcula sola a partir de los días salvo que alguien la
+// fuerce a mano (ver Estancia.duracionManual).
+enum DuracionEstancia {
+  CORTA
+  LARGA
+}
+
 // Centro propio de Novaschool (residencia/campus) al que pertenece un
 // usuario del CRM. No confundir con el "cliente" (Centro/colegio externo).
 enum CentroNovaschool {
@@ -163,6 +171,10 @@ model Centro {
   // ya existentes no los tienen todavía.
   vat         String?
   direccion   String?
+  // Solo tiene sentido cuando tipo = CENTRO: distingue un colegio directo de
+  // una agencia que representa a varios. Los clientes ya existentes quedan
+  // como colegio (false) por defecto.
+  esAgencia   Boolean     @default(false)
   canalOrigen String      @default("Facebook")
   notas       String?
   createdAt   DateTime    @default(now())
@@ -234,6 +246,18 @@ model Estancia {
   reservaDias     Int?      @default(15)
   reservaCreadaEn DateTime?
 
+  // Duración corta/larga (más de 3 meses). Se recalcula sola a partir de
+  // los días cada vez que se guarda la estancia, salvo que duracionManual
+  // sea true (alguien la forzó a mano y ya no se toca sola).
+  duracion       DuracionEstancia?
+  duracionManual Boolean           @default(false)
+
+  // Días y noches puestos a mano, para cuando todavía no hay fecha de
+  // entrada ni de salida. Si las fechas existen, mandan ellas: estos dos
+  // campos se ignoran.
+  diasManual   Int?
+  nochesManual Int?
+
   interacciones      Interaccion[]
   documentosEnviados DocumentoEnviado[]
   participantes      Participante[]
@@ -255,6 +279,8 @@ model Habitacion {
   nombre           String
   capacidad        Int
   activa           Boolean          @default(true)
+  // Las habitaciones de profesorado son las que tienen nevera.
+  tieneNevera      Boolean          @default(false)
   centroNovaschool CentroNovaschool @default(MEDINA_ELVIRA)
   createdAt        DateTime         @default(now())
 
@@ -289,6 +315,13 @@ model Participante {
   contactoEmergenciaTelefono String?
   autorizacionRecibida       Boolean   @default(false)
   seguroRecibido             Boolean   @default(false)
+
+  // Solo informativo, para que la residencia sepa cuántos desayunos/
+  // comidas/cenas preparar: no cambia el cálculo del presupuesto (que sigue
+  // yendo por pensión completa/media pensión del grupo).
+  desayuno Boolean @default(true)
+  almuerzo Boolean @default(true)
+  cena     Boolean @default(true)
 
   @@index([estanciaId])
   @@index([habitacionId])
@@ -380,7 +413,7 @@ model Presupuesto {
   // para el precio por persona: solo alumnos y profesores.
   numAlumnos    Int @default(0)
   numProfesores Int @default(0)
-  numMonitores  Int @default(0)
+  numMonitores  Int @default(1)
 
   // Porcentajes aplicados, guardados con el presupuesto: si mañana cambia el
   // margen de la casa, este presupuesto sigue explicando su propio total.
