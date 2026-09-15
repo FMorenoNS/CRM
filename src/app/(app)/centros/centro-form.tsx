@@ -13,6 +13,7 @@ import {
 type DefaultValues = {
   nombre?: string;
   tipo?: string;
+  esAgencia?: boolean;
   pais?: string;
   ciudad?: string | null;
   vat?: string | null;
@@ -37,6 +38,8 @@ function CentroFields({
   defaultValues?: DefaultValues;
   disabled?: boolean;
 }) {
+  const [tipo, setTipo] = useState(defaultValues?.tipo ?? "CENTRO");
+
   return (
     <>
       <div className="flex flex-col gap-1">
@@ -60,7 +63,8 @@ function CentroFields({
               name="tipo"
               value="CENTRO"
               disabled={disabled}
-              defaultChecked={(defaultValues?.tipo ?? "CENTRO") === "CENTRO"}
+              checked={tipo === "CENTRO"}
+              onChange={() => setTipo("CENTRO")}
             />
             Centro (institución)
           </label>
@@ -70,12 +74,40 @@ function CentroFields({
               name="tipo"
               value="PERSONA"
               disabled={disabled}
-              defaultChecked={defaultValues?.tipo === "PERSONA"}
+              checked={tipo === "PERSONA"}
+              onChange={() => setTipo("PERSONA")}
             />
             Persona
           </label>
         </div>
       </div>
+      {tipo === "CENTRO" && (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium text-gray-700">Tipo de centro</span>
+          <div className="flex gap-4 text-sm text-gray-700">
+            <label className="flex items-center gap-1.5">
+              <input
+                type="radio"
+                name="esAgencia"
+                value="false"
+                disabled={disabled}
+                defaultChecked={!defaultValues?.esAgencia}
+              />
+              Colegio
+            </label>
+            <label className="flex items-center gap-1.5">
+              <input
+                type="radio"
+                name="esAgencia"
+                value="true"
+                disabled={disabled}
+                defaultChecked={defaultValues?.esAgencia === true}
+              />
+              Agencia
+            </label>
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="pais" className="text-sm font-medium text-gray-700">
@@ -181,6 +213,7 @@ export function CentroCreateForm() {
     return {
       nombre: (d.get("nombre") as string) ?? "",
       tipo: (d.get("tipo") as string) || "CENTRO",
+      esAgencia: d.get("esAgencia") === "true",
       pais: (d.get("pais") as string) ?? "",
       ciudad: (d.get("ciudad") as string) ?? "",
       vat: (d.get("vat") as string) ?? "",
@@ -428,6 +461,7 @@ export function CentroEditForm({
     const values = {
       nombre: (d.get("nombre") as string) ?? "",
       tipo: (d.get("tipo") as string) || "CENTRO",
+      esAgencia: d.get("esAgencia") === "true",
       pais: (d.get("pais") as string) ?? "",
       ciudad: (d.get("ciudad") as string) ?? "",
       vat: (d.get("vat") as string) ?? "",

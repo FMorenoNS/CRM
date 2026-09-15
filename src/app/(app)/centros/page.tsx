@@ -8,6 +8,14 @@ import { centroVisibilityFilter } from "@/lib/permissions";
 
 const COLUMN_COUNT = 9;
 
+// "Centro" es demasiado genérico para la lista: si es un cliente
+// institucional, interesa más saber si es un colegio directo o una agencia
+// que representa a varios.
+function etiquetaTipo(centro: { tipo: string; esAgencia: boolean }): string {
+  if (centro.tipo === "CENTRO") return centro.esAgencia ? "Agencia" : "Colegio";
+  return TIPO_CLIENTE_LABELS[centro.tipo] ?? centro.tipo;
+}
+
 function formatFecha(d: Date) {
   return d.toLocaleDateString("es-ES", {
     day: "2-digit",
@@ -150,7 +158,7 @@ export default async function CentrosPage({
                   {centro.nombre}
                 </Link>
                 <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
-                  {TIPO_CLIENTE_LABELS[centro.tipo]}
+                  {etiquetaTipo(centro)}
                 </span>
               </div>
               <p className="mt-0.5 text-sm text-gray-600">
@@ -238,7 +246,7 @@ export default async function CentrosPage({
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-2">{TIPO_CLIENTE_LABELS[centro.tipo]}</td>
+                  <td className="px-4 py-2">{etiquetaTipo(centro)}</td>
                   <td className="px-4 py-2">{centro.pais}</td>
                   <td className="px-4 py-2 whitespace-nowrap">
                     {formatFecha(centro.createdAt)}

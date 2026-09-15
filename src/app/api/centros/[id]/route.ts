@@ -48,6 +48,7 @@ async function handlerPATCH(
     data: {
       nombre: parsed.data.nombre,
       tipo: parsed.data.tipo || "CENTRO",
+      esAgencia: parsed.data.tipo === "PERSONA" ? false : parsed.data.esAgencia,
       pais: parsed.data.pais,
       ciudad: parsed.data.ciudad || null,
       vat: parsed.data.vat || null,

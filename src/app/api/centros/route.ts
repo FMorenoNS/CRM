@@ -57,6 +57,7 @@ async function handlerPOST(request: Request) {
     data: {
       nombre: d.nombre,
       tipo: d.tipo || "CENTRO",
+      esAgencia: d.tipo === "PERSONA" ? false : d.esAgencia,
       pais: d.pais,
       ciudad: d.ciudad || null,
       vat: d.vat || null,

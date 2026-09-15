@@ -119,6 +119,7 @@ export default async function CentroDetailPage({
             defaultValues={{
               nombre: centro.nombre,
               tipo: centro.tipo,
+              esAgencia: centro.esAgencia,
               pais: centro.pais,
               ciudad: centro.ciudad,
               vat: centro.vat,

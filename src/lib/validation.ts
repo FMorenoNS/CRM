@@ -40,6 +40,9 @@ export const loginSchema = z.object({
 export const centroSchema = z.object({
   nombre: textoCorto(200).optional().default(""),
   tipo: z.enum(["CENTRO", "PERSONA"]).optional().default("CENTRO"),
+  // Solo aplica cuando tipo=CENTRO: distingue un colegio directo de una
+  // agencia que representa a varios.
+  esAgencia: z.boolean().optional().default(false),
   pais: textoCorto().optional().default(""),
   ciudad: textoCorto().optional().nullable().or(z.literal("")),
   vat: textoCorto(60).optional().nullable().or(z.literal("")),
