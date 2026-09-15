@@ -108,6 +108,13 @@ const HABITACIONES = [
   { nombre: "241", capacidad: 5, activa: true }, // 2 camas y 1 litera
   { nombre: "242", capacidad: 5, activa: true }, // 2 camas y 1 litera
   { nombre: "243", capacidad: 5, activa: true }, // 2 camas y 1 litera
+  { nombre: "205", capacidad: 3, activa: true }, // 1 cama y 1 litera
+  { nombre: "213", capacidad: 2, activa: true }, // 2 camas
+  { nombre: "221", capacidad: 6, activa: true }, // 6 camas (apartamento)
+  { nombre: "225", capacidad: 5, activa: true }, // 3 camas y 1 litera (cortina ducha)
+  { nombre: "229", capacidad: 5, activa: true }, // 1 cama y 2 literas (aseo minusválidos)
+  { nombre: "230", capacidad: 5, activa: true }, // 3 camas y 1 litera (aseo minusválidos)
+  { nombre: "232", capacidad: 5, activa: true }, // 3 camas y 1 litera
 ];
 
 async function main() {
