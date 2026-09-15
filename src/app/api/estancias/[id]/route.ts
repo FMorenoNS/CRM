@@ -4,6 +4,7 @@ import { requireApiUser } from "@/lib/api-auth";
 import { updateEstanciaSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
 import { canEditMasterData, forbidden } from "@/lib/permissions";
+import { calcularDuracion, resolverDiasNoches } from "@/lib/precios";
 import { DEMASIADO_GRANDE, readJsonBody } from "@/lib/request";
 import { withApi } from "@/lib/http";
 
@@ -41,6 +42,27 @@ async function handlerPATCH(
   }
 
   const d = parsed.data;
+
+  const diasManual =
+    d.diasManual !== undefined && d.diasManual !== null && d.diasManual !== ""
+      ? Number(d.diasManual)
+      : null;
+  const nochesManual =
+    d.nochesManual !== undefined && d.nochesManual !== null && d.nochesManual !== ""
+      ? Number(d.nochesManual)
+      : null;
+  const duracionManual = d.duracionManual ?? false;
+  const duracion = duracionManual
+    ? d.duracion || null
+    : calcularDuracion(
+        resolverDiasNoches({
+          fechaInicio: d.fechaInicio,
+          fechaFin: d.fechaFin,
+          diasManual,
+          nochesManual,
+        }).dias
+      );
+
   const estancia = await prisma.estancia.update({
     where: { id },
     data: {
@@ -75,6 +97,10 @@ async function handlerPATCH(
         d.reservaDias !== undefined && d.reservaDias !== null && d.reservaDias !== ""
           ? Number(d.reservaDias)
           : null,
+      duracion,
+      duracionManual,
+      diasManual,
+      nochesManual,
       notas: d.notas || null,
     },
   });

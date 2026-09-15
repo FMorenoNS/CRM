@@ -242,6 +242,8 @@ export async function buildEstanciaBloques({
               reservaCreadaEn: estancia.reservaCreadaEn
                 ? estancia.reservaCreadaEn.toISOString()
                 : null,
+              duracion: estancia.duracion,
+              duracionManual: estancia.duracionManual,
               notas: estancia.notas,
             }}
             presupuesto={presupuesto}

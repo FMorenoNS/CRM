@@ -161,6 +161,13 @@ export const TIPO_PROYECTO_LABELS: Record<string, string> = {
   PRIVADO: "Privado",
 };
 
+// Duración de la estancia: corta (short-term, 3 meses o menos) o larga
+// (long-term, más de 3 meses).
+export const DURACION_LABELS: Record<string, string> = {
+  CORTA: "Corto plazo",
+  LARGA: "Largo plazo",
+};
+
 // Centros propios de Novaschool a los que puede pertenecer un usuario.
 export const CENTRO_ASIGNADO_LABELS: Record<string, string> = {
   OPENWORLD: "Openworld",

@@ -2,7 +2,13 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Kanban, type EstanciaCard } from "./kanban";
-import { PAIS_OPTIONS, PROGRAMA_OPTIONS, TODOS_ESTADOS, ESTADO_LABELS } from "@/lib/labels";
+import {
+  PAIS_OPTIONS,
+  PROGRAMA_OPTIONS,
+  TODOS_ESTADOS,
+  ESTADO_LABELS,
+  DURACION_LABELS,
+} from "@/lib/labels";
 import { getSession } from "@/lib/session";
 import { canDoOperational, centroVisibilityFilter } from "@/lib/permissions";
 
@@ -13,10 +19,11 @@ export default async function EstanciasPage({
     pais?: string;
     participante?: string;
     tipoPrograma?: string;
+    duracion?: string;
     estado?: string;
   }>;
 }) {
-  const { pais, participante, tipoPrograma, estado } = await searchParams;
+  const { pais, participante, tipoPrograma, duracion, estado } = await searchParams;
 
   const session = await getSession();
   if (!session) redirect("/login");
@@ -30,6 +37,8 @@ export default async function EstanciasPage({
           ? participante
           : undefined,
       tipoPrograma: tipoPrograma || undefined,
+      duracion:
+        duracion === "CORTA" || duracion === "LARGA" ? duracion : undefined,
       estado: (TODOS_ESTADOS as readonly string[]).includes(estado ?? "")
         ? (estado as (typeof TODOS_ESTADOS)[number])
         : undefined,
@@ -46,6 +55,7 @@ export default async function EstanciasPage({
     tipoPrograma: e.tipoPrograma,
     tipoParticipante: e.tipoParticipante,
     edadGrupo: e.edadGrupo,
+    duracion: e.duracion,
     estado: e.estado,
     activo: e.activo,
     puedeEditar: canDoOperational(session, e.centro.id),
@@ -115,6 +125,21 @@ export default async function EstanciasPage({
                 {p}
               </option>
             ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1 sm:ml-2 sm:flex-row sm:items-center sm:gap-2">
+          <label htmlFor="duracion" className="text-gray-600">
+            Duración
+          </label>
+          <select
+            id="duracion"
+            name="duracion"
+            defaultValue={duracion ?? ""}
+            className="w-full rounded border border-gray-300 px-2 py-2 sm:w-auto sm:py-1"
+          >
+            <option value="">Todas</option>
+            <option value="CORTA">{DURACION_LABELS.CORTA}</option>
+            <option value="LARGA">{DURACION_LABELS.LARGA}</option>
           </select>
         </div>
         <div className="flex flex-col gap-1 sm:ml-2 sm:flex-row sm:items-center sm:gap-2">

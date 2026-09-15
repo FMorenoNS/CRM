@@ -128,6 +128,13 @@ const estanciaBaseSchema = z.object({
     .union([z.number().int().min(1).max(365), z.string().max(10)])
     .optional()
     .nullable(),
+  // Duración corta/larga (más de 3 meses). Si duracionManual no es true, el
+  // servidor la recalcula solo a partir de los días y este valor se ignora.
+  duracion: z.enum(["CORTA", "LARGA"]).optional().nullable().or(z.literal("")),
+  duracionManual: z.boolean().optional(),
+  // Días y noches a mano, para cuando no hay fecha de entrada ni de salida.
+  diasManual: numeroOpcional,
+  nochesManual: numeroOpcional,
   notas: z.string().trim().max(LARGO, "El texto es demasiado largo (máx. 5.000 caracteres).").optional().nullable(),
 });
 

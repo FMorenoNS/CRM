@@ -4,6 +4,7 @@ import { requireApiUser } from "@/lib/api-auth";
 import { estanciaSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
 import { canDoOperational, forbidden } from "@/lib/permissions";
+import { calcularDuracion, resolverDiasNoches } from "@/lib/precios";
 import { DEMASIADO_GRANDE, readJsonBody } from "@/lib/request";
 import { withApi } from "@/lib/http";
 
@@ -29,6 +30,29 @@ async function handlerPOST(request: Request) {
 
   const d = parsed.data;
   if (!canDoOperational(user, d.centroId)) return forbidden();
+
+  const diasManual =
+    d.diasManual !== undefined && d.diasManual !== null && d.diasManual !== ""
+      ? Number(d.diasManual)
+      : null;
+  const nochesManual =
+    d.nochesManual !== undefined && d.nochesManual !== null && d.nochesManual !== ""
+      ? Number(d.nochesManual)
+      : null;
+  // La duración se recalcula sola a partir de los días salvo que alguien la
+  // haya forzado a mano (duracionManual=true).
+  const duracionManual = d.duracionManual ?? false;
+  const duracion = duracionManual
+    ? d.duracion || null
+    : calcularDuracion(
+        resolverDiasNoches({
+          fechaInicio: d.fechaInicio,
+          fechaFin: d.fechaFin,
+          diasManual,
+          nochesManual,
+        }).dias
+      );
+
   const estancia = await prisma.estancia.create({
     data: {
       centroId: d.centroId,
@@ -64,6 +88,10 @@ async function handlerPOST(request: Request) {
         d.reservaDias !== undefined && d.reservaDias !== null && d.reservaDias !== ""
           ? Number(d.reservaDias)
           : undefined,
+      duracion,
+      duracionManual,
+      diasManual,
+      nochesManual,
       notas: d.notas || null,
     },
   });

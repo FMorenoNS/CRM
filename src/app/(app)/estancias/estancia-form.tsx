@@ -7,7 +7,9 @@ import {
   ESTADO_LABELS,
   PROGRAMA_OPTIONS,
   TIPO_PROYECTO_LABELS,
+  DURACION_LABELS,
 } from "@/lib/labels";
+import { calcularDuracion } from "@/lib/precios";
 import {
   PresupuestoCampo,
   type PresupuestoGuardado,
@@ -31,11 +33,17 @@ type DefaultValues = {
   presupuestoImporte?: string | null;
   reservaDias?: number | null;
   reservaCreadaEn?: string | null;
+  duracion?: "CORTA" | "LARGA" | null;
+  duracionManual?: boolean;
   notas?: string | null;
 };
 
 function readValues(form: HTMLFormElement) {
   const data = new FormData(form);
+  // "duracionModo" es un selector auxiliar (no un campo del esquema): ""
+  // significa automática (el servidor la recalcula sola), y si no, lleva ya
+  // el valor forzado.
+  const duracionModo = (data.get("duracionModo") as string) ?? "";
   return {
     centroId: (data.get("centroId") as string) ?? "",
     tipoPrograma: (data.get("tipoPrograma") as string) ?? "",
@@ -51,6 +59,8 @@ function readValues(form: HTMLFormElement) {
     estado: (data.get("estado") as string) || undefined,
     presupuestoImporte: (data.get("presupuestoImporte") as string) ?? "",
     reservaDias: (data.get("reservaDias") as string) ?? "",
+    duracion: duracionModo || "",
+    duracionManual: duracionModo !== "",
     notas: (data.get("notas") as string) ?? "",
   };
 }
@@ -330,6 +340,33 @@ export function EstanciaForm({
           {diasNoches.noches} noche{diasNoches.noches === 1 ? "" : "s"}
         </p>
       )}
+
+      <div className="flex flex-col gap-1">
+        <label htmlFor="duracionModo" className="text-sm font-medium text-gray-700">
+          Duración
+        </label>
+        <select
+          id="duracionModo"
+          name="duracionModo"
+          disabled={readOnly}
+          defaultValue={
+            defaultValues?.duracionManual && defaultValues?.duracion
+              ? defaultValues.duracion
+              : ""
+          }
+          className={`${inputCls} max-w-[16rem]`}
+        >
+          <option value="">
+            Automática ({DURACION_LABELS[calcularDuracion(diasNoches?.dias ?? 0)]})
+          </option>
+          <option value="CORTA">Forzar: {DURACION_LABELS.CORTA}</option>
+          <option value="LARGA">Forzar: {DURACION_LABELS.LARGA}</option>
+        </select>
+        <p className="text-xs text-gray-500">
+          Automática = corto plazo hasta 3 meses, largo plazo a partir de ahí,
+          según los días. Se puede forzar a mano si hace falta.
+        </p>
+      </div>
 
       {mode === "edit" && (
         <div className="flex flex-col gap-1">

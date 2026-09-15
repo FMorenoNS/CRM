@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { PIPELINE_ESTADOS, ESTADO_LABELS } from "@/lib/labels";
+import { PIPELINE_ESTADOS, ESTADO_LABELS, DURACION_LABELS } from "@/lib/labels";
 import { EstanciaQuickActions } from "./quick-actions";
 
 export type EstanciaCard = {
@@ -14,6 +14,7 @@ export type EstanciaCard = {
   tipoPrograma: string;
   tipoParticipante: "ALUMNOS" | "PROFESORES";
   edadGrupo: string | null;
+  duracion: "CORTA" | "LARGA" | null;
   estado: string;
   activo: boolean;
   puedeEditar: boolean;
@@ -58,6 +59,11 @@ function Card({
         {estancia.edadGrupo ? ` · ${estancia.edadGrupo}` : ""}
       </p>
       <p className="text-xs text-gray-500">{estancia.tipoPrograma}</p>
+      {estancia.duracion && (
+        <span className="mt-1 inline-block rounded-full bg-brand-navy/10 px-2 py-0.5 text-[11px] font-medium text-brand-navy">
+          {DURACION_LABELS[estancia.duracion]}
+        </span>
+      )}
       {estancia.puedeEditar && (
         <div className="flex items-center gap-3">
           <button

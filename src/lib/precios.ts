@@ -227,6 +227,35 @@ export function calcularPresupuesto(params: {
   };
 }
 
+// A partir de cuántos días una estancia se considera "long-term" en vez de
+// "short-term" (3 meses, en días de calendario).
+export const UMBRAL_LARGA_DIAS = 90;
+
+/** Duración corta o larga a partir de los días de la estancia. */
+export function calcularDuracion(dias: number): "CORTA" | "LARGA" {
+  return dias > UMBRAL_LARGA_DIAS ? "LARGA" : "CORTA";
+}
+
+/**
+ * Días y noches "efectivos" de una estancia: si hay fechas de entrada y
+ * salida, mandan ellas; si no, se usan los días/noches puestos a mano.
+ */
+export function resolverDiasNoches(params: {
+  fechaInicio?: string | null;
+  fechaFin?: string | null;
+  diasManual?: number | null;
+  nochesManual?: number | null;
+}): { dias: number; noches: number } {
+  if (params.fechaInicio && params.fechaFin) {
+    return diasYNoches(params.fechaInicio, params.fechaFin);
+  }
+  return {
+    dias: params.diasManual && params.diasManual > 0 ? Math.floor(params.diasManual) : 0,
+    noches:
+      params.nochesManual && params.nochesManual > 0 ? Math.floor(params.nochesManual) : 0,
+  };
+}
+
 /** Días y noches de la estancia. El último día no suma noche. */
 export function diasYNoches(
   inicio: string | null,
