@@ -47,9 +47,13 @@ export type HabitacionOption = {
 
 function etiquetaHabitacion(h: HabitacionOption): string {
   const plazas = h.plazasLibres > 0 ? `${h.plazasLibres} libres` : "sin plazas";
-  const nevera = h.tieneNevera ? " ❄️" : "";
-  if (!h.rolOcupante) return `${h.nombre}${nevera} (${plazas})`;
-  return `${h.nombre}${nevera} (${plazas} · ${PARTICIPANTE_LABELS[h.rolOcupante]?.toLowerCase() ?? h.rolOcupante})`;
+  const sufijo = h.tieneNevera ? " · para profesores" : "";
+  // Si ya está ocupada por profesores, no hace falta repetirlo: "para
+  // profesores" ya lo dice.
+  if (!h.rolOcupante || (h.tieneNevera && h.rolOcupante === "PROFESORES")) {
+    return `${h.nombre}${sufijo} (${plazas})`;
+  }
+  return `${h.nombre}${sufijo} (${plazas} · ${PARTICIPANTE_LABELS[h.rolOcupante]?.toLowerCase() ?? h.rolOcupante})`;
 }
 
 function HabitacionSelect({
