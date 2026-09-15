@@ -78,6 +78,7 @@ type HabitacionDia = {
   id: string;
   nombre: string;
   capacidad: number;
+  activa: boolean;
   ocupantes: OcupanteDia[];
 };
 
@@ -113,9 +114,13 @@ function EnlaceOcupante({ o }: { o: OcupanteDia }) {
 }
 
 function VistaPorHabitacion({ habitaciones }: { habitaciones: HabitacionDia[] }) {
+  // Las bloqueadas no se pueden ocupar, así que aquí no aportan nada: esta
+  // vista es para gestionar quién está hoy, no para ver la planta entera
+  // (eso lo hace la pestaña Plano).
+  const activas = habitaciones.filter((h) => h.activa);
   return (
     <div className="flex flex-col gap-3">
-      {habitaciones.map((h) => (
+      {activas.map((h) => (
         <div key={h.id} className="rounded border border-gray-200 p-3">
           <p className="text-sm font-medium text-gray-900">
             {h.nombre}{" "}
@@ -137,7 +142,7 @@ function VistaPorHabitacion({ habitaciones }: { habitaciones: HabitacionDia[] })
           )}
         </div>
       ))}
-      {habitaciones.length === 0 && (
+      {activas.length === 0 && (
         <p className="text-sm text-gray-500">No hay habitaciones activas.</p>
       )}
     </div>
@@ -252,8 +257,22 @@ function agruparPorPlanta(
 
 // Caja de una habitación en el esquema: no calca el plano real del
 // edificio, es una rejilla ordenada por número con el mismo código de color
-// que ya usa el calendario (verde/ámbar/rojo según ocupación).
+// que ya usa el calendario (verde/ámbar/rojo según ocupación). Las
+// bloqueadas se ven en gris, sin números: no se pueden ocupar, pero se
+// muestran igual para que la planta se vea completa.
 function CajaHabitacion({ habitacion }: { habitacion: HabitacionDia }) {
+  if (!habitacion.activa) {
+    return (
+      <div
+        title="No disponible"
+        className="flex flex-col items-center justify-center gap-0.5 rounded border border-dashed border-gray-300 bg-gray-100 px-1 py-2 text-center text-gray-400"
+      >
+        <p className="text-xs font-semibold">{habitacion.nombre}</p>
+        <p className="text-[11px] leading-tight">No disponible</p>
+      </div>
+    );
+  }
+
   const ocupados = habitacion.ocupantes.filter((o) => o.confirmado).length;
   const reservados = habitacion.ocupantes.length - ocupados;
   const nombres = habitacion.ocupantes.map((o) => o.nombre).join(", ");
@@ -315,7 +334,10 @@ function DetalleDia({ fecha }: { fecha: string }) {
   const ocupantes = habitaciones?.flatMap((h) => h.ocupantes) ?? [];
   const totalOcupados = ocupantes.filter((o) => o.confirmado).length;
   const totalReservados = ocupantes.filter((o) => !o.confirmado).length;
-  const totalCapacidad = habitaciones?.reduce((s, h) => s + h.capacidad, 0) ?? 0;
+  // Las bloqueadas no cuentan para el total: aunque tengan una capacidad
+  // guardada, hoy no se puede ocupar ninguna plaza suya.
+  const totalCapacidad =
+    habitaciones?.filter((h) => h.activa).reduce((s, h) => s + h.capacidad, 0) ?? 0;
 
   return (
     <div className="flex flex-col gap-4">

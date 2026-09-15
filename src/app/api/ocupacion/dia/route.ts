@@ -18,10 +18,11 @@ export async function GET(request: Request) {
   const fecha = new Date(`${fechaStr}T00:00:00.000Z`);
 
   const [habitaciones, participantes] = await Promise.all([
+    // Se traen también las bloqueadas/inactivas: el plano quiere mostrar la
+    // planta completa, no solo las habitaciones que se pueden ocupar hoy.
     prisma.habitacion.findMany({
-      where: { activa: true },
       orderBy: { nombre: "asc" },
-      select: { id: true, nombre: true, capacidad: true },
+      select: { id: true, nombre: true, capacidad: true, activa: true },
     }),
     prisma.participante.findMany({
       where: {
@@ -48,6 +49,7 @@ export async function GET(request: Request) {
     id: h.id,
     nombre: h.nombre,
     capacidad: h.capacidad,
+    activa: h.activa,
     ocupantes: participantes
       .filter((p) => p.habitacionId === h.id)
       .map((p) => ({
