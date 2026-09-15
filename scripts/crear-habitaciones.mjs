@@ -136,6 +136,11 @@ const HABITACIONES = [
   { nombre: "318", capacidad: 4, activa: true }, // 2 camas y 1 litera
   { nombre: "319", capacidad: 5, activa: true }, // 2 camas y 1 litera
   { nombre: "320", capacidad: 5, activa: true }, // 2 camas y 1 litera
+  { nombre: "321", capacidad: 6, activa: true }, // 2 camas y 2 literas
+  { nombre: "322", capacidad: 5, activa: true }, // 1 cama y 2 literas
+  { nombre: "323", capacidad: 5, activa: true }, // 1 cama y 2 literas
+  { nombre: "324", capacidad: 5, activa: true }, // 1 cama y 2 literas
+  { nombre: "325", capacidad: 5, activa: true }, // 1 cama y 2 literas
 ];
 
 async function main() {
