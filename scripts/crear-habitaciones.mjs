@@ -62,6 +62,18 @@ const HABITACIONES = [
   { nombre: "134", capacidad: 5, activa: true }, // 1 cama y 2 literas
   { nombre: "135", capacidad: 3, activa: true }, // 1 cama y 1 litera
   { nombre: "136", capacidad: 2, activa: true }, // 1 litera
+  // 137-147: bloqueadas, igual que 101-107 (capacidad todavía desconocida).
+  { nombre: "137", capacidad: 0, activa: false },
+  { nombre: "138", capacidad: 0, activa: false },
+  { nombre: "139", capacidad: 0, activa: false },
+  { nombre: "140", capacidad: 0, activa: false },
+  { nombre: "141", capacidad: 0, activa: false },
+  { nombre: "142", capacidad: 0, activa: false },
+  { nombre: "143", capacidad: 0, activa: false },
+  { nombre: "144", capacidad: 0, activa: false },
+  { nombre: "145", capacidad: 0, activa: false },
+  { nombre: "146", capacidad: 0, activa: false },
+  { nombre: "147", capacidad: 0, activa: false },
 ];
 
 async function main() {
