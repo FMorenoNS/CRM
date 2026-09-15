@@ -115,6 +115,27 @@ const HABITACIONES = [
   { nombre: "229", capacidad: 5, activa: true }, // 1 cama y 2 literas (aseo minusválidos)
   { nombre: "230", capacidad: 5, activa: true }, // 3 camas y 1 litera (aseo minusválidos)
   { nombre: "232", capacidad: 5, activa: true }, // 3 camas y 1 litera
+  // 3ª planta.
+  { nombre: "301", capacidad: 6, activa: true }, // 2 camas y 2 literas
+  { nombre: "302", capacidad: 6, activa: true }, // 2 camas y 2 literas
+  { nombre: "303", capacidad: 5, activa: true }, // 1 cama y 2 literas
+  { nombre: "304", capacidad: 5, activa: true }, // 1 cama y 2 literas
+  { nombre: "305", capacidad: 5, activa: true }, // 1 cama y 2 literas
+  { nombre: "306", capacidad: 5, activa: true }, // 1 cama y 2 literas
+  { nombre: "307", capacidad: 5, activa: true }, // 1 cama y 2 literas
+  { nombre: "308", capacidad: 5, activa: true }, // 1 cama y 2 literas
+  { nombre: "309", capacidad: 5, activa: true }, // 1 cama y 2 literas
+  { nombre: "310", capacidad: 5, activa: true }, // 1 cama y 2 literas
+  { nombre: "311", capacidad: 5, activa: true }, // 1 cama y 2 literas
+  { nombre: "312", capacidad: 5, activa: true }, // 2 camas y 1 litera
+  { nombre: "313", capacidad: 5, activa: true }, // 2 camas y 1 litera
+  { nombre: "314", capacidad: 5, activa: true }, // 2 camas y 1 litera
+  { nombre: "315", capacidad: 5, activa: true }, // 2 camas y 1 litera
+  { nombre: "316", capacidad: 3, activa: true }, // 2 camas y 1 litera (nevera y microondas)
+  { nombre: "317", capacidad: 3, activa: true }, // 2 camas y 1 litera
+  { nombre: "318", capacidad: 4, activa: true }, // 2 camas y 1 litera
+  { nombre: "319", capacidad: 5, activa: true }, // 2 camas y 1 litera
+  { nombre: "320", capacidad: 5, activa: true }, // 2 camas y 1 litera
 ];
 
 async function main() {
