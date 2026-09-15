@@ -39,12 +39,14 @@ export type HabitacionOption = {
   nombre: string;
   plazasLibres: number;
   rolOcupante: "ALUMNOS" | "PROFESORES" | null;
+  tieneNevera: boolean;
 };
 
 function etiquetaHabitacion(h: HabitacionOption): string {
   const plazas = h.plazasLibres > 0 ? `${h.plazasLibres} libres` : "sin plazas";
-  if (!h.rolOcupante) return `${h.nombre} (${plazas})`;
-  return `${h.nombre} (${plazas} · ${PARTICIPANTE_LABELS[h.rolOcupante]?.toLowerCase() ?? h.rolOcupante})`;
+  const nevera = h.tieneNevera ? " ❄️" : "";
+  if (!h.rolOcupante) return `${h.nombre}${nevera} (${plazas})`;
+  return `${h.nombre}${nevera} (${plazas} · ${PARTICIPANTE_LABELS[h.rolOcupante]?.toLowerCase() ?? h.rolOcupante})`;
 }
 
 function HabitacionSelect({

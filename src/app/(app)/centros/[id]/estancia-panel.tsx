@@ -181,6 +181,7 @@ export async function buildEstanciaBloques({
         nombre: h.nombre,
         plazasLibres: await plazasLibres(h.id, estancia.fechaInicio, estancia.fechaFin),
         rolOcupante: rolOcupante === "MIXTA" ? null : rolOcupante,
+        tieneNevera: h.tieneNevera,
       };
     })
   );

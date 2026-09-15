@@ -131,7 +131,7 @@ const HABITACIONES = [
   { nombre: "313", capacidad: 5, activa: true }, // 2 camas y 1 litera
   { nombre: "314", capacidad: 5, activa: true }, // 2 camas y 1 litera
   { nombre: "315", capacidad: 5, activa: true }, // 2 camas y 1 litera
-  { nombre: "316", capacidad: 3, activa: true }, // 2 camas y 1 litera (nevera y microondas)
+  { nombre: "316", capacidad: 3, activa: true, nevera: true }, // 2 camas y 1 litera (nevera y microondas)
   { nombre: "317", capacidad: 3, activa: true }, // 2 camas y 1 litera
   { nombre: "318", capacidad: 4, activa: true }, // 2 camas y 1 litera
   { nombre: "319", capacidad: 5, activa: true }, // 2 camas y 1 litera
@@ -159,17 +159,26 @@ const HABITACIONES = [
   { nombre: "341", capacidad: 5, activa: true }, // 3 camas y 1 litera
   { nombre: "342", capacidad: 5, activa: true }, // 3 camas y 1 litera
   { nombre: "343", capacidad: 5, activa: true }, // 3 camas y 1 litera
-  { nombre: "344", capacidad: 2, activa: true }, // 2 camas (televisión y nevera, apartamento)
+  { nombre: "344", capacidad: 2, activa: true, nevera: true }, // 2 camas (televisión y nevera, apartamento)
 ];
 
 async function main() {
   const prisma = new PrismaClient();
   try {
     for (const h of HABITACIONES) {
+      // Las habitaciones de profesorado son las que tienen nevera (316 y
+      // 344, hasta ahora): el resto no la tiene.
+      const tieneNevera = h.nevera ?? false;
       await prisma.habitacion.upsert({
         where: { centroNovaschool_nombre: { centroNovaschool: CENTRO, nombre: h.nombre } },
-        create: { ...h, centroNovaschool: CENTRO },
-        update: { capacidad: h.capacidad, activa: h.activa },
+        create: {
+          nombre: h.nombre,
+          capacidad: h.capacidad,
+          activa: h.activa,
+          tieneNevera,
+          centroNovaschool: CENTRO,
+        },
+        update: { capacidad: h.capacidad, activa: h.activa, tieneNevera },
       });
     }
     console.log(`Listo: ${HABITACIONES.length} habitaciones de Medina Elvira creadas/actualizadas.`);

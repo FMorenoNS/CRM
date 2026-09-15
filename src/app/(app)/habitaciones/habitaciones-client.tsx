@@ -10,6 +10,7 @@ export type HabitacionRow = {
   nombre: string;
   capacidad: number;
   activa: boolean;
+  tieneNevera: boolean;
   centroNovaschool: string;
   ocupantes: number;
 };
@@ -34,6 +35,7 @@ function CreateForm() {
         body: JSON.stringify({
           nombre: data.get("nombre"),
           capacidad: data.get("capacidad"),
+          tieneNevera: data.get("tieneNevera") === "on",
         }),
       });
       const result = await res.json().catch(() => ({}));
@@ -68,6 +70,10 @@ function CreateForm() {
           className={inputCls}
         />
       </div>
+      <label className="flex items-center gap-1.5 text-sm text-gray-700">
+        <input type="checkbox" name="tieneNevera" className="h-4 w-4 accent-brand-navy" />
+        Tiene nevera (habitación de profesorado)
+      </label>
       {error && (
         <p className="text-sm text-red-600" role="alert">
           {error}
@@ -98,6 +104,21 @@ function RowActions({ habitacion }: { habitacion: HabitacionRow }) {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ activa: !habitacion.activa }),
+      });
+      router.refresh();
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  async function toggleNevera() {
+    setIsPending(true);
+    setError(undefined);
+    try {
+      await fetch(`/api/habitaciones/${habitacion.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tieneNevera: !habitacion.tieneNevera }),
       });
       router.refresh();
     } finally {
@@ -143,6 +164,14 @@ function RowActions({ habitacion }: { habitacion: HabitacionRow }) {
         </button>
         <button
           type="button"
+          onClick={toggleNevera}
+          disabled={isPending}
+          className="text-gray-600 hover:underline disabled:opacity-50"
+        >
+          {habitacion.tieneNevera ? "Quitar nevera" : "Marcar con nevera"}
+        </button>
+        <button
+          type="button"
           onClick={eliminar}
           disabled={isPending}
           className="text-red-600 hover:underline disabled:opacity-50"
@@ -174,6 +203,7 @@ export function HabitacionesClient({ habitaciones }: { habitaciones: HabitacionR
               <th className="px-4 py-2 text-right">Capacidad</th>
               <th className="px-4 py-2 text-right">Ocupantes actuales</th>
               <th className="px-4 py-2">Estado</th>
+              <th className="px-4 py-2">Nevera</th>
               <th className="px-4 py-2">Acciones</th>
             </tr>
           </thead>
@@ -194,13 +224,20 @@ export function HabitacionesClient({ habitaciones }: { habitaciones: HabitacionR
                   )}
                 </td>
                 <td className="px-4 py-2">
+                  {h.tieneNevera ? (
+                    <span title="Habitación de profesorado">❄️</span>
+                  ) : (
+                    <span className="text-gray-300">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-2">
                   <RowActions habitacion={h} />
                 </td>
               </tr>
             ))}
             {habitaciones.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
+                <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
                   No hay habitaciones todavía.
                 </td>
               </tr>

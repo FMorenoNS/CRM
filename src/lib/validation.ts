@@ -206,6 +206,8 @@ export const habitacionSchema = z.object({
     .min(1, "La capacidad debe ser al menos 1.")
     .max(50, "La capacidad parece demasiado alta."),
   activa: z.boolean().optional(),
+  // Las habitaciones de profesorado son las que tienen nevera.
+  tieneNevera: z.boolean().optional(),
 });
 
 export const updateHabitacionSchema = habitacionSchema.partial();
