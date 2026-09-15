@@ -17,6 +17,9 @@ export type ParticipanteItem = {
   contactoEmergenciaTelefono: string | null;
   autorizacionRecibida: boolean;
   seguroRecibido: boolean;
+  desayuno: boolean;
+  almuerzo: boolean;
+  cena: boolean;
 };
 
 // Edad que tendrá en la fecha de referencia (inicio de la estancia, no hoy):
@@ -104,6 +107,9 @@ function DatosSensiblesForm({ participante }: { participante: ParticipanteItem }
           contactoEmergenciaTelefono: (data.get("contactoEmergenciaTelefono") as string) || null,
           autorizacionRecibida: data.get("autorizacionRecibida") === "on",
           seguroRecibido: data.get("seguroRecibido") === "on",
+          desayuno: data.get("desayuno") === "on",
+          almuerzo: data.get("almuerzo") === "on",
+          cena: data.get("cena") === "on",
         }),
       });
       const result = await res.json().catch(() => ({}));
@@ -180,6 +186,25 @@ function DatosSensiblesForm({ participante }: { participante: ParticipanteItem }
           <input type="checkbox" name="seguroRecibido" defaultChecked={participante.seguroRecibido} />
           Seguro médico/de viaje recibido
         </label>
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-gray-600">
+          Comidas (informativo para la residencia)
+        </span>
+        <div className="flex gap-4 text-sm text-gray-700">
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" name="desayuno" defaultChecked={participante.desayuno} />
+            Desayuno
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" name="almuerzo" defaultChecked={participante.almuerzo} />
+            Almuerzo
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" name="cena" defaultChecked={participante.cena} />
+            Cena
+          </label>
+        </div>
       </div>
       {error && (
         <p className="text-xs text-red-600" role="alert">

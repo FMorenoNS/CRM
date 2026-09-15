@@ -228,6 +228,11 @@ export const participanteSchema = z.object({
   contactoEmergenciaTelefono: z.string().trim().optional().nullable(),
   autorizacionRecibida: z.boolean().optional(),
   seguroRecibido: z.boolean().optional(),
+  // Solo informativo para la residencia (cocina): no afecta al cálculo del
+  // presupuesto.
+  desayuno: z.boolean().optional(),
+  almuerzo: z.boolean().optional(),
+  cena: z.boolean().optional(),
 });
 
 export const updateParticipanteSchema = participanteSchema.partial();

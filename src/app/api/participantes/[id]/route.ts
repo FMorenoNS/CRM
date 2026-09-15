@@ -49,6 +49,9 @@ export async function PATCH(
     contactoEmergenciaTelefono?: string | null;
     autorizacionRecibida?: boolean;
     seguroRecibido?: boolean;
+    desayuno?: boolean;
+    almuerzo?: boolean;
+    cena?: boolean;
   } = {};
   if (parsed.data.nombre !== undefined) data.nombre = parsed.data.nombre;
   if (parsed.data.rol !== undefined) data.rol = parsed.data.rol;
@@ -73,6 +76,9 @@ export async function PATCH(
   if (parsed.data.seguroRecibido !== undefined) {
     data.seguroRecibido = parsed.data.seguroRecibido;
   }
+  if (parsed.data.desayuno !== undefined) data.desayuno = parsed.data.desayuno;
+  if (parsed.data.almuerzo !== undefined) data.almuerzo = parsed.data.almuerzo;
+  if (parsed.data.cena !== undefined) data.cena = parsed.data.cena;
 
   // Si al terminar el cambio el participante queda en una habitación (ya
   // sea porque se le asigna una nueva o porque cambia de rol quedándose en

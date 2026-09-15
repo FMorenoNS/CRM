@@ -167,6 +167,9 @@ export async function buildEstanciaBloques({
     contactoEmergenciaTelefono: p.contactoEmergenciaTelefono,
     autorizacionRecibida: p.autorizacionRecibida,
     seguroRecibido: p.seguroRecibido,
+    desayuno: p.desayuno,
+    almuerzo: p.almuerzo,
+    cena: p.cena,
   }));
 
   const habitacionesActivas = await prisma.habitacion.findMany({
