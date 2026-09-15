@@ -201,7 +201,7 @@ function Calculadora({
     presupuesto?.numProfesores ?? aNumero(contexto.numeroProfesores)
   );
   const [numMonitores, setNumMonitores] = useState(
-    presupuesto?.numMonitores ?? 0
+    presupuesto?.numMonitores ?? 1
   );
   // En pantalla se manejan porcentajes (20), en la API fracciones (0,2).
   const [margen, setMargen] = useState(
