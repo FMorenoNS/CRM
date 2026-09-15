@@ -8,9 +8,9 @@ import {
   IVA_POR_DEFECTO,
   MARGEN_POR_DEFECTO,
   calcularPresupuesto,
-  diasYNoches,
   formatearEuros,
   redondear,
+  resolverDiasNoches,
   valoresPorDefecto,
   type LineaEntrada,
 } from "@/lib/precios";
@@ -50,6 +50,8 @@ type Contexto = {
   numeroProfesores: string | null;
   fechaInicio: string | null;
   fechaFin: string | null;
+  diasManual?: number | null;
+  nochesManual?: number | null;
 };
 
 /**
@@ -185,7 +187,12 @@ function Calculadora({
 }) {
   const router = useRouter();
   const { confirmar, dialogo: dialogoConfirmar } = useConfirm();
-  const { dias, noches } = diasYNoches(contexto.fechaInicio, contexto.fechaFin);
+  const { dias, noches } = resolverDiasNoches({
+    fechaInicio: contexto.fechaInicio,
+    fechaFin: contexto.fechaFin,
+    diasManual: contexto.diasManual,
+    nochesManual: contexto.nochesManual,
+  });
 
   const [numAlumnos, setNumAlumnos] = useState(
     presupuesto?.numAlumnos ?? aNumero(contexto.numeroAlumnos)
@@ -548,8 +555,10 @@ function Calculadora({
             </h2>
             <p className="mt-0.5 text-sm text-gray-500">
               {dias > 0
-                ? `${dias} día(s) y ${noches} noche(s) según las fechas de la estancia.`
-                : "La estancia no tiene fechas puestas: pon los días a mano en cada línea."}
+                ? contexto.fechaInicio && contexto.fechaFin
+                  ? `${dias} día(s) y ${noches} noche(s) según las fechas de la estancia.`
+                  : `${dias} día(s) y ${noches} noche(s) puestos a mano en la estancia (sin fechas).`
+                : "La estancia no tiene fechas ni días puestos: pon los días a mano en cada línea."}
             </p>
           </div>
           <button

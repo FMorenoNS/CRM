@@ -35,6 +35,8 @@ type DefaultValues = {
   reservaCreadaEn?: string | null;
   duracion?: "CORTA" | "LARGA" | null;
   duracionManual?: boolean;
+  diasManual?: number | null;
+  nochesManual?: number | null;
   notas?: string | null;
 };
 
@@ -61,6 +63,8 @@ function readValues(form: HTMLFormElement) {
     reservaDias: (data.get("reservaDias") as string) ?? "",
     duracion: duracionModo || "",
     duracionManual: duracionModo !== "",
+    diasManual: (data.get("diasManual") as string) ?? "",
+    nochesManual: (data.get("nochesManual") as string) ?? "",
     notas: (data.get("notas") as string) ?? "",
   };
 }
@@ -114,7 +118,19 @@ export function EstanciaForm({
   const [isPending, setIsPending] = useState(false);
   const [fechaInicio, setFechaInicio] = useState(defaultValues?.fechaInicio ?? "");
   const [fechaFin, setFechaFin] = useState(defaultValues?.fechaFin ?? "");
+  const [diasManual, setDiasManual] = useState(
+    defaultValues?.diasManual != null ? String(defaultValues.diasManual) : ""
+  );
+  const [nochesManual, setNochesManual] = useState(
+    defaultValues?.nochesManual != null ? String(defaultValues.nochesManual) : ""
+  );
   const diasNoches = calcularDiasNoches(fechaInicio, fechaFin);
+  const hayFechas = Boolean(fechaInicio && fechaFin);
+  // Sin fechas, los días/noches puestos a mano son los que cuentan para el
+  // cálculo del presupuesto y de la duración corta/larga.
+  const diasEfectivos = hayFechas
+    ? (diasNoches?.dias ?? 0)
+    : Math.max(0, Math.floor(Number(diasManual) || 0));
   const vencimientoReserva = calcularVencimientoReserva(
     defaultValues?.reservaCreadaEn,
     defaultValues?.reservaDias
@@ -334,11 +350,50 @@ export function EstanciaForm({
           />
         </div>
       </div>
-      {diasNoches && (
-        <p className="-mt-2 text-xs text-gray-500">
-          {diasNoches.dias} día{diasNoches.dias === 1 ? "" : "s"} ·{" "}
-          {diasNoches.noches} noche{diasNoches.noches === 1 ? "" : "s"}
-        </p>
+      {hayFechas ? (
+        diasNoches && (
+          <p className="-mt-2 text-xs text-gray-500">
+            {diasNoches.dias} día{diasNoches.dias === 1 ? "" : "s"} ·{" "}
+            {diasNoches.noches} noche{diasNoches.noches === 1 ? "" : "s"}
+          </p>
+        )
+      ) : (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium text-gray-700">
+            Días y noches (sin fechas puestas)
+          </span>
+          <div className="flex gap-3">
+            <input
+              name="diasManual"
+              type="number"
+              min={0}
+              step={1}
+              placeholder="Días"
+              aria-label="Días"
+              disabled={readOnly}
+              value={diasManual}
+              onChange={(e) => setDiasManual(e.target.value)}
+              className={`${inputCls} max-w-[8rem]`}
+            />
+            <input
+              name="nochesManual"
+              type="number"
+              min={0}
+              step={1}
+              placeholder="Noches"
+              aria-label="Noches"
+              disabled={readOnly}
+              value={nochesManual}
+              onChange={(e) => setNochesManual(e.target.value)}
+              className={`${inputCls} max-w-[8rem]`}
+            />
+          </div>
+          <p className="text-xs text-gray-500">
+            Se usan para el presupuesto y la duración mientras no haya fecha
+            de entrada y de salida. En cuanto se pongan las dos fechas, mandan
+            ellas.
+          </p>
+        </div>
       )}
 
       <div className="flex flex-col gap-1">
@@ -357,7 +412,7 @@ export function EstanciaForm({
           className={`${inputCls} max-w-[16rem]`}
         >
           <option value="">
-            Automática ({DURACION_LABELS[calcularDuracion(diasNoches?.dias ?? 0)]})
+            Automática ({DURACION_LABELS[calcularDuracion(diasEfectivos)]})
           </option>
           <option value="CORTA">Forzar: {DURACION_LABELS.CORTA}</option>
           <option value="LARGA">Forzar: {DURACION_LABELS.LARGA}</option>
@@ -447,6 +502,8 @@ export function EstanciaForm({
             numeroProfesores: defaultValues?.numeroProfesores ?? null,
             fechaInicio,
             fechaFin,
+            diasManual: diasManual ? Number(diasManual) : null,
+            nochesManual: nochesManual ? Number(nochesManual) : null,
           }}
           readOnly={readOnly}
         />

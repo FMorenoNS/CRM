@@ -245,6 +245,8 @@ export async function buildEstanciaBloques({
                 : null,
               duracion: estancia.duracion,
               duracionManual: estancia.duracionManual,
+              diasManual: estancia.diasManual,
+              nochesManual: estancia.nochesManual,
               notas: estancia.notas,
             }}
             presupuesto={presupuesto}
