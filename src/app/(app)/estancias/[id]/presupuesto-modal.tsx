@@ -23,6 +23,13 @@ const CENTROS_NOVASCHOOL = ["OPENWORLD", "MEDINA_ELVIRA", "ANORETA"] as const;
 // oferta nueva (se pueden desmarcar si no aplican).
 const PRODUCTOS_FIJOS = ["MONITORES", "MATERIALES", "INSTALACIONES"];
 
+// Los autobuses/traslados son servicios, no personas: por defecto 1 (un
+// solo servicio), salvo el aeropuerto, que suele hacer falta por partida
+// doble (ida y vuelta). Se puede seguir tocando a mano en cada línea.
+function cantidadPorDefectoAutobus(codigo: string): number {
+  return codigo === "AEROP_MALAGA" ? 2 : 1;
+}
+
 /** Presupuesto ya guardado, tal como lo devuelve el servidor. */
 export type PresupuestoGuardado = {
   numAlumnos: number;
@@ -235,11 +242,13 @@ function Calculadora({
    * líneas se ajustan solas. En cuanto se toca una, se respeta y deja de
    * seguirlo. Las líneas de un presupuesto ya guardado cuentan como tocadas.
    */
-  // Los monitores se cuentan aparte del grupo desde el principio (empiezan
-  // en 1, no en el número de personas), así que se marcan "tocados" de
-  // fábrica para que el efecto de más abajo no los reescriba con el grupo.
+  // Los monitores y los autobuses se cuentan aparte del grupo desde el
+  // principio (no son "una plaza por persona"), así que se marcan
+  // "tocados" de fábrica para que el efecto de más abajo no los reescriba
+  // con el número de personas.
   const [tocadas, setTocadas] = useState<Record<string, boolean>>(() => {
     const t: Record<string, boolean> = { MONITORES: true };
+    for (const a of AUTOBUSES) t[a.codigo] = true;
     for (const l of presupuesto?.lineas ?? []) t[l.codigo] = true;
     return t;
   });
@@ -300,10 +309,7 @@ function Calculadora({
             incluida: false,
             precioUnitario: a.precio,
             dias: 1,
-            // El grupo también aquí, como en el resto. Ojo: en un autobús la
-            // cantidad son servicios, no personas, así que casi siempre hay
-            // que bajarla con las flechas.
-            cantidad: ctx.pax,
+            cantidad: cantidadPorDefectoAutobus(a.codigo),
           };
     }
     return inicial;
@@ -348,7 +354,11 @@ function Calculadora({
   /** Devuelve todas las cantidades al grupo y los días a lo que toca. */
   function rellenarConElGrupo() {
     const ctx = { pax, dias, noches };
-    setTocadas({ MONITORES: true });
+    setTocadas(() => {
+      const t: Record<string, boolean> = { MONITORES: true };
+      for (const a of AUTOBUSES) t[a.codigo] = true;
+      return t;
+    });
     setFilas((prev) => {
       const siguiente = { ...prev };
       for (const c of CONCEPTOS) {
@@ -360,7 +370,11 @@ function Calculadora({
         };
       }
       for (const a of AUTOBUSES) {
-        siguiente[a.codigo] = { ...prev[a.codigo], dias: 1, cantidad: ctx.pax };
+        siguiente[a.codigo] = {
+          ...prev[a.codigo],
+          dias: 1,
+          cantidad: cantidadPorDefectoAutobus(a.codigo),
+        };
       }
       return siguiente;
     });
