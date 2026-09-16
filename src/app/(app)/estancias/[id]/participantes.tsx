@@ -49,7 +49,14 @@ export type HabitacionOption = {
 };
 
 function etiquetaHabitacion(h: HabitacionOption): string {
-  const plazas = h.plazasLibres > 0 ? `${h.plazasLibres} libres` : "sin plazas";
+  // Se permite pasarse de capacidad (no bloquea, se avisa a la vista): con
+  // plazasLibres negativo ya hay más gente de la que cabe.
+  const plazas =
+    h.plazasLibres > 0
+      ? `${h.plazasLibres} libres`
+      : h.plazasLibres < 0
+        ? `⚠️ ${-h.plazasLibres} de más`
+        : "sin plazas";
   const sufijo = h.tieneNevera ? " · para profesores" : "";
   // Si ya está ocupada por profesores, no hace falta repetirlo: "para
   // profesores" ya lo dice.

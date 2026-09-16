@@ -328,18 +328,22 @@ function CajaHabitacion({
 
   const ocupados = habitacion.ocupantes.filter((o) => o.confirmado).length;
   const reservados = habitacion.ocupantes.length - ocupados;
+  const sePasa = habitacion.ocupantes.length > habitacion.capacidad;
   const nombres = habitacion.ocupantes.map((o) => o.nombre).join(", ");
   return (
     <button
       type="button"
       onClick={() => onClick?.(habitacion)}
-      title={nombres || "Libre"}
+      title={sePasa ? `${nombres} · más gente de la que caben` : nombres || "Libre"}
       className={`flex flex-col items-center justify-center gap-0.5 rounded border border-black/5 px-1 py-1.5 text-center hover:ring-2 hover:ring-brand-navy/40 ${tonoOcupacion(
         ocupados,
         habitacion.capacidad
       )}`}
     >
-      <p className="text-xs font-semibold">{habitacion.nombre}</p>
+      <p className="text-xs font-semibold">
+        {sePasa && "⚠️ "}
+        {habitacion.nombre}
+      </p>
       <p className="text-[11px] leading-tight">
         {ocupados}/{habitacion.capacidad}
         {reservados > 0 && <span className="text-sky-700"> +{reservados}</span>}
@@ -535,6 +539,7 @@ function FilaOcupanteHabitacion({
           <option value="">Elegir habitación…</option>
           {opciones.map((h) => (
             <option key={h.id} value={h.id}>
+              {h.ocupantes.length > h.capacidad ? "⚠️ " : ""}
               {h.nombre} ({h.ocupantes.length}/{h.capacidad})
             </option>
           ))}
@@ -558,13 +563,18 @@ function PanelHabitacion({
   habitaciones: HabitacionDia[];
   onCambiado: () => void;
 }) {
+  const sePasa = habitacion.ocupantes.length > habitacion.capacidad;
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm font-medium text-gray-900">
+        {sePasa && "⚠️ "}
         Habitación {habitacion.nombre}{" "}
         <span className="font-normal text-gray-400">
           ({habitacion.ocupantes.length}/{habitacion.capacidad})
         </span>
+        {sePasa && (
+          <span className="ml-1.5 font-normal text-rose-700">más gente de la que caben</span>
+        )}
       </p>
       {habitacion.ocupantes.length === 0 ? (
         <p className="text-sm text-gray-500">Libre, nadie hospedado hoy.</p>

@@ -5,7 +5,7 @@ import { participanteSchema } from "@/lib/validation";
 import { registrarHistorial } from "@/lib/audit";
 import { PARTICIPANTE_LABELS } from "@/lib/labels";
 import { canDoOperational, forbidden } from "@/lib/permissions";
-import { plazasLibres, rolQueOcupa } from "@/lib/habitaciones";
+import { rolQueOcupa } from "@/lib/habitaciones";
 
 export async function POST(
   request: Request,
@@ -37,20 +37,11 @@ export async function POST(
   const habitacionId = parsed.data.habitacionId || null;
   let mezclaConfirmada = false;
   if (habitacionId) {
-    const libres = await plazasLibres(
-      habitacionId,
-      estancia.fechaInicio,
-      estancia.fechaFin
-    );
-    if (libres <= 0) {
-      return NextResponse.json(
-        { error: "Esa habitación no tiene plazas libres en esas fechas." },
-        { status: 409 }
-      );
-    }
+    // La capacidad ya no bloquea: una habitación puede quedar con más gente
+    // de la que le cabe (se avisa con ⚠️ en la UI, no se impide aquí).
     // Alumnos y profesores no comparten habitación, salvo confirmación
-    // explícita del usuario (forzarMezcla): la capacidad de arriba sí es un
-    // límite físico y nunca se salta.
+    // explícita del usuario (forzarMezcla): eso sigue siendo un límite que
+    // nunca se salta solo.
     const ocupante = await rolQueOcupa(habitacionId, estancia.fechaInicio, estancia.fechaFin);
     if (ocupante && ocupante !== parsed.data.rol) {
       if (!parsed.data.forzarMezcla) {
