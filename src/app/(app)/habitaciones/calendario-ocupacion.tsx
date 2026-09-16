@@ -380,6 +380,19 @@ function PlanoPlanta({
   );
 }
 
+// Plazas de una planta: solo las habitaciones activas cuentan (una
+// bloqueada o inexistente no aloja a nadie, aunque tuviera una capacidad
+// guardada).
+function capacidadPlanta(...grupos: CajaData[][]): number {
+  let total = 0;
+  for (const grupo of grupos) {
+    for (const h of grupo) {
+      if (!esInexistente(h) && h.activa) total += h.capacidad;
+    }
+  }
+  return total;
+}
+
 function VistaPlano({ habitaciones }: { habitaciones: HabitacionDia[] }) {
   const plantas = agruparPorPlanta(habitaciones);
   return (
@@ -389,7 +402,7 @@ function VistaPlano({ habitaciones }: { habitaciones: HabitacionDia[] }) {
           <h3 className="text-sm font-medium text-gray-700">
             Planta {p.planta}{" "}
             <span className="font-normal text-gray-400">
-              ({p.izquierda.length + p.derecha.length + p.sobrantes.length})
+              ({capacidadPlanta(p.izquierda, p.derecha, p.sobrantes)} plazas)
             </span>
           </h3>
           <div className="mt-2">
