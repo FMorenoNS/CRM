@@ -85,6 +85,7 @@ export type MetodoLlenado = "DOS" | "TRES" | "MAXIMA";
 
 export type EstadoHabitacion = {
   id: string;
+  nombre: string;
   // Plazas libres en esas fechas, ya restadas las de otras asignaciones.
   libres: number;
   // Rol que ya ocupa la habitación en esas fechas (cierra la habitación al
@@ -108,13 +109,69 @@ function limitePorHabitacion(metodo: MetodoLlenado): number {
   }
 }
 
+// Planta a la que pertenece una habitación, a partir de su número (101 →
+// planta 1, 215 → planta 2...): mismo criterio que en el plano del
+// calendario.
+function plantaDe(nombre: string): number {
+  const n = Number(nombre);
+  return Number.isFinite(n) ? Math.floor(n / 100) : 0;
+}
+
+// Reordena las habitaciones para que un grupo (los de una misma estancia)
+// quede junto en la misma planta, siempre empezando a intentarlo desde la
+// primera planta hacia arriba: se calcula, planta por planta, cuántas
+// plazas nuevas podría tomar cada una en esta pasada (según el método de
+// llenado), contando solo las compatibles con el rol; la primera planta
+// (de más baja a más alta) que sume plazas suficientes para "cantidad" se
+// prioriza entera. Si ninguna llega sola, se prioriza la que más plazas
+// tenga y se sigue por el resto de plantas en orden para lo que no quepa,
+// en vez de dejar el grupo sin ningún sitio.
+function priorizarPlanta(
+  habitaciones: EstadoHabitacion[],
+  rol: Rol,
+  cantidad: number,
+  metodo: MetodoLlenado
+): EstadoHabitacion[] {
+  const limite = limitePorHabitacion(metodo);
+  const compatible = (h: EstadoHabitacion) =>
+    (h.rol === null || h.rol === rol) &&
+    (rol === "PROFESORES" ? h.tieneNevera : !h.tieneNevera);
+
+  const porPlanta = new Map<number, EstadoHabitacion[]>();
+  for (const h of habitaciones) {
+    if (!compatible(h)) continue;
+    const planta = plantaDe(h.nombre);
+    const grupo = porPlanta.get(planta);
+    if (grupo) grupo.push(h);
+    else porPlanta.set(planta, [h]);
+  }
+
+  const plantas = [...porPlanta.entries()].sort((a, b) => a[0] - b[0]);
+  const capacidad = (grupo: EstadoHabitacion[]) =>
+    grupo.reduce((suma, h) => suma + Math.min(h.libres, limite), 0);
+
+  let elegida = plantas.find(([, grupo]) => capacidad(grupo) >= cantidad);
+  if (!elegida && plantas.length > 0) {
+    elegida = plantas.reduce((mejor, actual) =>
+      capacidad(actual[1]) > capacidad(mejor[1]) ? actual : mejor
+    );
+  }
+  if (!elegida) return habitaciones;
+
+  const grupoElegido = elegida[1];
+  const resto = habitaciones.filter((h) => !grupoElegido.includes(h));
+  return [...grupoElegido, ...resto];
+}
+
 /**
  * Reparte `cantidad` personas de un rol entre habitaciones con plazas
  * libres: no mezcla alumnos y profesores (una habitación que ya se usó para
  * un rol en este reparto queda cerrada al otro, aunque le sobre capacidad
  * física) y respeta que las habitaciones con nevera son solo para
  * profesorado. `metodo` limita cuántas plazas nuevas toma cada habitación en
- * esta pasada (2, 3 o todas las que tenga libres).
+ * esta pasada (2, 3 o todas las que tenga libres). Intenta meter a todo el
+ * grupo en la misma planta (empezando por la primera hacia arriba); si no
+ * cabe entero en ninguna, reparte lo que no quepa en las siguientes.
  *
  * Modifica `habitaciones` in place (resta las plazas tomadas y marca el
  * rol) para que un reparto posterior en la misma llamada (p. ej. primero
@@ -127,9 +184,11 @@ export function repartirEnHabitaciones(
   cantidad: number,
   metodo: MetodoLlenado
 ): string[] {
+  if (cantidad <= 0) return [];
   const limite = limitePorHabitacion(metodo);
+  const orden = priorizarPlanta(habitaciones, rol, cantidad, metodo);
   const asignados: string[] = [];
-  for (const h of habitaciones) {
+  for (const h of orden) {
     if (asignados.length >= cantidad) break;
     if (h.rol !== null && h.rol !== rol) continue;
     if (rol === "PROFESORES" && !h.tieneNevera) continue;

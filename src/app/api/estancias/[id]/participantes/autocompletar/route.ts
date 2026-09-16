@@ -72,6 +72,7 @@ export async function POST(
   const habitaciones: EstadoHabitacion[] = await Promise.all(
     habitacionesActivas.map(async (h) => ({
       id: h.id,
+      nombre: h.nombre,
       libres: Math.max(
         0,
         await plazasLibres(h.id, estancia.fechaInicio, estancia.fechaFin)
