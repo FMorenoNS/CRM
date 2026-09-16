@@ -254,6 +254,16 @@ const PLANTA_LAYOUT: Record<number, { izquierda: string[]; derecha: string[] }> 
   3: { derecha: rango(301, 320), izquierda: rango(344, 321) },
 };
 
+// En el plano real el pasillo no baja en línea recta: a partir de aquí (en
+// cada lado) da un salto hacia la derecha. Se refleja con un margen al
+// dibujar, sin llegar a la distancia exagerada del plano de papel.
+const CORTE_IZQUIERDA = 15; // 144→130 antes del salto, 129→121 después
+const CORTE_DERECHA = 12; // 101→112 antes del salto, 113→120 después
+
+function dividirEnTramo<T>(items: T[], corte: number): [T[], T[]] {
+  return [items.slice(0, corte), items.slice(corte)];
+}
+
 // Una habitación real (con datos de ocupación) o un hueco del plano que no
 // existe como fila en el CRM (cerrada, sin llave maestra): se dibuja igual,
 // en gris, para no dejar un vacío raro en la planta.
@@ -354,19 +364,35 @@ function PlanoPlanta({
   derecha: CajaData[];
   sobrantes: HabitacionDia[];
 }) {
+  const [izqArriba, izqAbajo] = dividirEnTramo(izquierda, CORTE_IZQUIERDA);
+  const [derArriba, derAbajo] = dividirEnTramo(derecha, CORTE_DERECHA);
   return (
     <div className="flex flex-col gap-2">
       <div className="flex gap-3">
         <div className="flex flex-1 flex-col gap-1">
-          {izquierda.map((h) => (
+          {izqArriba.map((h) => (
             <CajaHabitacion key={h.nombre} habitacion={h} />
           ))}
+          {izqAbajo.length > 0 && (
+            <div className="ml-4 flex flex-col gap-1">
+              {izqAbajo.map((h) => (
+                <CajaHabitacion key={h.nombre} habitacion={h} />
+              ))}
+            </div>
+          )}
         </div>
         <div className="w-4 shrink-0 rounded bg-gray-50" title="Pasillo" />
         <div className="flex flex-1 flex-col gap-1">
-          {derecha.map((h) => (
+          {derArriba.map((h) => (
             <CajaHabitacion key={h.nombre} habitacion={h} />
           ))}
+          {derAbajo.length > 0 && (
+            <div className="ml-4 flex flex-col gap-1">
+              {derAbajo.map((h) => (
+                <CajaHabitacion key={h.nombre} habitacion={h} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
       {sobrantes.length > 0 && (
