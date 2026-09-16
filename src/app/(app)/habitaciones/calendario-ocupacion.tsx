@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { OcupacionMensual } from "@/lib/ocupacion";
 import { SidePanel } from "@/app/(app)/side-panel";
+import { Modal } from "@/app/(app)/modal";
 
 const MESES = [
   "enero",
@@ -82,10 +83,9 @@ type HabitacionDia = {
   ocupantes: OcupanteDia[];
 };
 
-type Vista = "habitacion" | "cliente" | "comedor" | "plano";
+type Vista = "cliente" | "comedor" | "plano";
 
 const VISTAS: { id: Vista; label: string }[] = [
-  { id: "habitacion", label: "Por habitación" },
   { id: "cliente", label: "Por cliente" },
   { id: "comedor", label: "Comedor" },
   { id: "plano", label: "Plano" },
@@ -110,42 +110,6 @@ function EnlaceOcupante({ o }: { o: OcupanteDia }) {
     >
       {o.nombre}
     </Link>
-  );
-}
-
-function VistaPorHabitacion({ habitaciones }: { habitaciones: HabitacionDia[] }) {
-  // Las bloqueadas no se pueden ocupar, así que aquí no aportan nada: esta
-  // vista es para gestionar quién está hoy, no para ver la planta entera
-  // (eso lo hace la pestaña Plano).
-  const activas = habitaciones.filter((h) => h.activa);
-  return (
-    <div className="flex flex-col gap-3">
-      {activas.map((h) => (
-        <div key={h.id} className="rounded border border-gray-200 p-3">
-          <p className="text-sm font-medium text-gray-900">
-            {h.nombre}{" "}
-            <span className="font-normal text-gray-400">
-              ({h.ocupantes.length}/{h.capacidad})
-            </span>
-          </p>
-          {h.ocupantes.length === 0 ? (
-            <p className="mt-1 text-xs text-gray-400">Libre.</p>
-          ) : (
-            <ul className="mt-2 flex flex-col gap-1.5">
-              {h.ocupantes.map((o) => (
-                <li key={o.id} className="text-xs text-gray-600">
-                  <EnlaceOcupante o={o} />
-                  <BadgeReserva confirmado={o.confirmado} /> · {o.rolLabel} · {o.centroNombre}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ))}
-      {activas.length === 0 && (
-        <p className="text-sm text-gray-500">No hay habitaciones activas.</p>
-      )}
-    </div>
   );
 }
 
@@ -183,13 +147,21 @@ function VistaPorCliente({ ocupantes }: { ocupantes: OcupanteDia[] }) {
   );
 }
 
-function VistaComedor({ ocupantes }: { ocupantes: OcupanteDia[] }) {
+function VistaComedor({ ocupantes, fecha }: { ocupantes: OcupanteDia[]; fecha: string }) {
   const conNecesidades = ocupantes.filter((o) => o.alergias);
   const sinNecesidades = ocupantes.filter((o) => !o.alergias);
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm font-medium text-gray-900">Total para comer hoy: {ocupantes.length}</p>
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-gray-900">Total para comer hoy: {ocupantes.length}</p>
+        <a
+          href={`/api/ocupacion/dia/comedor-pdf?fecha=${fecha}`}
+          className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-brand-navy hover:bg-gray-100"
+        >
+          Descargar informe (PDF)
+        </a>
+      </div>
 
       <div>
         <h3 className="text-sm font-medium text-rose-700">
@@ -335,7 +307,13 @@ function agruparPorPlanta(habitaciones: HabitacionDia[]): {
 // bloqueada o cuando el número ni siquiera existe como habitación en el
 // CRM (cerrada, sin llave maestra); el resto lleva el mismo código de
 // color que ya usa el calendario (verde/ámbar/rojo según ocupación).
-function CajaHabitacion({ habitacion }: { habitacion: CajaData }) {
+function CajaHabitacion({
+  habitacion,
+  onClick,
+}: {
+  habitacion: CajaData;
+  onClick?: (habitacion: HabitacionDia) => void;
+}) {
   if (esInexistente(habitacion) || !habitacion.activa) {
     return (
       <div
@@ -352,9 +330,11 @@ function CajaHabitacion({ habitacion }: { habitacion: CajaData }) {
   const reservados = habitacion.ocupantes.length - ocupados;
   const nombres = habitacion.ocupantes.map((o) => o.nombre).join(", ");
   return (
-    <div
+    <button
+      type="button"
+      onClick={() => onClick?.(habitacion)}
       title={nombres || "Libre"}
-      className={`flex flex-col items-center justify-center gap-0.5 rounded border border-black/5 px-1 py-1.5 text-center ${tonoOcupacion(
+      className={`flex flex-col items-center justify-center gap-0.5 rounded border border-black/5 px-1 py-1.5 text-center hover:ring-2 hover:ring-brand-navy/40 ${tonoOcupacion(
         ocupados,
         habitacion.capacidad
       )}`}
@@ -364,7 +344,7 @@ function CajaHabitacion({ habitacion }: { habitacion: CajaData }) {
         {ocupados}/{habitacion.capacidad}
         {reservados > 0 && <span className="text-sky-700"> +{reservados}</span>}
       </p>
-    </div>
+    </button>
   );
 }
 
@@ -386,14 +366,16 @@ function EscaleraIncendios() {
 function ColumnaHabitaciones({
   habitaciones,
   escaleraTrasNumeros,
+  onSeleccionar,
 }: {
   habitaciones: CajaData[];
   escaleraTrasNumeros?: string[];
+  onSeleccionar?: (habitacion: HabitacionDia) => void;
 }) {
   return (
     <>
       {habitaciones.flatMap((h) => {
-        const nodos = [<CajaHabitacion key={h.nombre} habitacion={h} />];
+        const nodos = [<CajaHabitacion key={h.nombre} habitacion={h} onClick={onSeleccionar} />];
         if (escaleraTrasNumeros?.includes(h.nombre)) {
           nodos.push(<EscaleraIncendios key={`escalera-${h.nombre}`} />);
         }
@@ -415,11 +397,13 @@ function PlanoPlanta({
   derecha,
   layout,
   sobrantes,
+  onSeleccionar,
 }: {
   izquierda: CajaData[];
   derecha: CajaData[];
   layout: { izquierda: LadoLayout; derecha: LadoLayout };
   sobrantes: HabitacionDia[];
+  onSeleccionar: (habitacion: HabitacionDia) => void;
 }) {
   const cortarTras = (orden: string[], numero: string) => {
     const i = orden.indexOf(numero);
@@ -437,12 +421,14 @@ function PlanoPlanta({
           <ColumnaHabitaciones
             habitaciones={izqArriba}
             escaleraTrasNumeros={layout.izquierda.escaleraTrasNumeros}
+            onSeleccionar={onSeleccionar}
           />
           {izqAbajo.length > 0 && (
             <div className="ml-4 flex flex-col gap-1 border-t-2 border-dashed border-gray-300 pt-1">
               <ColumnaHabitaciones
                 habitaciones={izqAbajo}
                 escaleraTrasNumeros={layout.izquierda.escaleraTrasNumeros}
+                onSeleccionar={onSeleccionar}
               />
             </div>
           )}
@@ -452,12 +438,14 @@ function PlanoPlanta({
           <ColumnaHabitaciones
             habitaciones={derArriba}
             escaleraTrasNumeros={layout.derecha.escaleraTrasNumeros}
+            onSeleccionar={onSeleccionar}
           />
           {derAbajo.length > 0 && (
             <div className="ml-4 flex flex-col gap-1 border-t-2 border-dashed border-gray-300 pt-1">
               <ColumnaHabitaciones
                 habitaciones={derAbajo}
                 escaleraTrasNumeros={layout.derecha.escaleraTrasNumeros}
+                onSeleccionar={onSeleccionar}
               />
             </div>
           )}
@@ -466,7 +454,7 @@ function PlanoPlanta({
       {sobrantes.length > 0 && (
         <div className="mt-1 grid grid-cols-5 gap-1.5 border-t border-dashed border-gray-200 pt-2 sm:grid-cols-7">
           {sobrantes.map((h) => (
-            <CajaHabitacion key={h.id} habitacion={h} />
+            <CajaHabitacion key={h.id} habitacion={h} onClick={onSeleccionar} />
           ))}
         </div>
       )}
@@ -487,8 +475,126 @@ function capacidadPlanta(...grupos: CajaData[][]): number {
   return total;
 }
 
-function VistaPlano({ habitaciones }: { habitaciones: HabitacionDia[] }) {
+// Un ocupante de la habitación seleccionada, con un mini desplegable para
+// moverlo directamente a otra habitación sin salir del plano.
+function FilaOcupanteHabitacion({
+  o,
+  habitaciones,
+  habitacionActualId,
+  onCambiado,
+}: {
+  o: OcupanteDia;
+  habitaciones: HabitacionDia[];
+  habitacionActualId: string;
+  onCambiado: () => void;
+}) {
+  const [moviendo, setMoviendo] = useState(false);
+  const [error, setError] = useState<string>();
+  const opciones = habitaciones
+    .filter((h) => h.activa && h.id !== habitacionActualId)
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+  async function cambiarHabitacion(nuevaHabitacionId: string) {
+    if (!nuevaHabitacionId) return;
+    setMoviendo(true);
+    setError(undefined);
+    try {
+      const res = await fetch(`/api/participantes/${o.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ habitacionId: nuevaHabitacionId }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(result.error ?? "No se pudo cambiar de habitación.");
+        return;
+      }
+      onCambiado();
+    } catch {
+      setError("No se pudo conectar con el servidor.");
+    } finally {
+      setMoviendo(false);
+    }
+  }
+
+  return (
+    <li className="rounded border border-gray-200 p-2 text-xs">
+      <p className="text-gray-800">
+        <EnlaceOcupante o={o} />
+        <BadgeReserva confirmado={o.confirmado} /> · {o.rolLabel} · {o.centroNombre}
+      </p>
+      {o.alergias && <p className="mt-0.5 text-rose-700">{o.alergias}</p>}
+      <div className="mt-1.5 flex items-center gap-1.5">
+        <label className="text-gray-500">Mover a</label>
+        <select
+          defaultValue=""
+          disabled={moviendo}
+          onChange={(e) => cambiarHabitacion(e.target.value)}
+          className="rounded border border-gray-300 px-1.5 py-0.5 text-xs disabled:opacity-50"
+        >
+          <option value="">Elegir habitación…</option>
+          {opciones.map((h) => (
+            <option key={h.id} value={h.id}>
+              {h.nombre} ({h.ocupantes.length}/{h.capacidad})
+            </option>
+          ))}
+        </select>
+      </div>
+      {error && (
+        <p className="mt-1 text-red-600" role="alert">
+          {error}
+        </p>
+      )}
+    </li>
+  );
+}
+
+function PanelHabitacion({
+  habitacion,
+  habitaciones,
+  onCambiado,
+}: {
+  habitacion: HabitacionDia;
+  habitaciones: HabitacionDia[];
+  onCambiado: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm font-medium text-gray-900">
+        Habitación {habitacion.nombre}{" "}
+        <span className="font-normal text-gray-400">
+          ({habitacion.ocupantes.length}/{habitacion.capacidad})
+        </span>
+      </p>
+      {habitacion.ocupantes.length === 0 ? (
+        <p className="text-sm text-gray-500">Libre, nadie hospedado hoy.</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {habitacion.ocupantes.map((o) => (
+            <FilaOcupanteHabitacion
+              key={o.id}
+              o={o}
+              habitaciones={habitaciones}
+              habitacionActualId={habitacion.id}
+              onCambiado={onCambiado}
+            />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function VistaPlano({
+  habitaciones,
+  onCambiado,
+}: {
+  habitaciones: HabitacionDia[];
+  onCambiado: () => void;
+}) {
+  const [seleccionadaId, setSeleccionadaId] = useState<string | null>(null);
   const plantas = agruparPorPlanta(habitaciones);
+  const seleccionada = habitaciones.find((h) => h.id === seleccionadaId) ?? null;
   return (
     <div className="flex flex-col gap-6">
       {plantas.map((p) => (
@@ -505,6 +611,7 @@ function VistaPlano({ habitaciones }: { habitaciones: HabitacionDia[] }) {
               derecha={p.derecha}
               layout={p.layout}
               sobrantes={p.sobrantes}
+              onSeleccionar={(h) => setSeleccionadaId(h.id)}
             />
           </div>
         </div>
@@ -512,6 +619,20 @@ function VistaPlano({ habitaciones }: { habitaciones: HabitacionDia[] }) {
       {plantas.length === 0 && (
         <p className="text-sm text-gray-500">No hay habitaciones activas.</p>
       )}
+
+      <SidePanel
+        open={seleccionada !== null}
+        onClose={() => setSeleccionadaId(null)}
+        title="Habitación"
+      >
+        {seleccionada && (
+          <PanelHabitacion
+            habitacion={seleccionada}
+            habitaciones={habitaciones}
+            onCambiado={onCambiado}
+          />
+        )}
+      </SidePanel>
     </div>
   );
 }
@@ -519,16 +640,21 @@ function VistaPlano({ habitaciones }: { habitaciones: HabitacionDia[] }) {
 function DetalleDia({ fecha }: { fecha: string }) {
   const [habitaciones, setHabitaciones] = useState<HabitacionDia[] | null>(null);
   const [error, setError] = useState<string>();
-  const [vista, setVista] = useState<Vista>("habitacion");
+  const [vista, setVista] = useState<Vista>("cliente");
+
+  function cargar() {
+    return fetch(`/api/ocupacion/dia?fecha=${fecha}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => setHabitaciones(data.habitaciones))
+      .catch(() => setError("No se pudo cargar el detalle de ese día."));
+  }
 
   useEffect(() => {
     setHabitaciones(null);
     setError(undefined);
-    setVista("habitacion");
-    fetch(`/api/ocupacion/dia?fecha=${fecha}`)
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((data) => setHabitaciones(data.habitaciones))
-      .catch(() => setError("No se pudo cargar el detalle de ese día."));
+    setVista("cliente");
+    cargar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fecha]);
 
   const ocupantes = habitaciones?.flatMap((h) => h.ocupantes) ?? [];
@@ -576,10 +702,9 @@ function DetalleDia({ fecha }: { fecha: string }) {
             ))}
           </div>
 
-          {vista === "habitacion" && <VistaPorHabitacion habitaciones={habitaciones} />}
           {vista === "cliente" && <VistaPorCliente ocupantes={ocupantes} />}
-          {vista === "comedor" && <VistaComedor ocupantes={ocupantes} />}
-          {vista === "plano" && <VistaPlano habitaciones={habitaciones} />}
+          {vista === "comedor" && <VistaComedor ocupantes={ocupantes} fecha={fecha} />}
+          {vista === "plano" && <VistaPlano habitaciones={habitaciones} onCambiado={cargar} />}
         </>
       )}
     </div>
@@ -670,13 +795,13 @@ export function CalendarioOcupacion({
         })}
       </div>
 
-      <SidePanel
+      <Modal
         open={diaSeleccionado !== null}
         onClose={() => setDiaSeleccionado(null)}
         title="Ocupación del día"
       >
         {diaSeleccionado && <DetalleDia fecha={diaSeleccionado} />}
-      </SidePanel>
+      </Modal>
     </div>
   );
 }
