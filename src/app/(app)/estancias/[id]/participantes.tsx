@@ -17,6 +17,9 @@ export type ParticipanteItem = {
   contactoEmergenciaTelefono: string | null;
   autorizacionRecibida: boolean;
   seguroRecibido: boolean;
+  celiaco: boolean;
+  intoleranteLactosa: boolean;
+  vegetariano: boolean;
   desayuno: boolean;
   almuerzo: boolean;
   cena: boolean;
@@ -111,6 +114,9 @@ function DatosSensiblesForm({ participante }: { participante: ParticipanteItem }
           contactoEmergenciaTelefono: (data.get("contactoEmergenciaTelefono") as string) || null,
           autorizacionRecibida: data.get("autorizacionRecibida") === "on",
           seguroRecibido: data.get("seguroRecibido") === "on",
+          celiaco: data.get("celiaco") === "on",
+          intoleranteLactosa: data.get("intoleranteLactosa") === "on",
+          vegetariano: data.get("vegetariano") === "on",
           desayuno: data.get("desayuno") === "on",
           almuerzo: data.get("almuerzo") === "on",
           cena: data.get("cena") === "on",
@@ -176,6 +182,29 @@ function DatosSensiblesForm({ participante }: { participante: ParticipanteItem }
           placeholder="Ninguna conocida"
           className="rounded border border-gray-300 px-2 py-1 text-sm"
         />
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-gray-600">
+          Categorías dietéticas (para el resumen del informe de comedor)
+        </span>
+        <div className="flex flex-wrap gap-4 text-sm text-gray-700">
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" name="celiaco" defaultChecked={participante.celiaco} />
+            Celiaco
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              name="intoleranteLactosa"
+              defaultChecked={participante.intoleranteLactosa}
+            />
+            Intolerante a la lactosa
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" name="vegetariano" defaultChecked={participante.vegetariano} />
+            Vegetariano
+          </label>
+        </div>
       </div>
       <div className="flex gap-4 text-sm text-gray-700">
         <label className="flex items-center gap-1.5">

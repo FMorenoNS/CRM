@@ -237,6 +237,11 @@ export const participanteSchema = z.object({
   contactoEmergenciaTelefono: z.string().trim().optional().nullable(),
   autorizacionRecibida: z.boolean().optional(),
   seguroRecibido: z.boolean().optional(),
+  // Categorías dietéticas más comunes, para el resumen del informe de
+  // comedor; "otras" necesidades siguen yendo en el texto libre de arriba.
+  celiaco: z.boolean().optional(),
+  intoleranteLactosa: z.boolean().optional(),
+  vegetariano: z.boolean().optional(),
   // Solo informativo para la residencia (cocina): no afecta al cálculo del
   // presupuesto.
   desayuno: z.boolean().optional(),

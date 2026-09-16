@@ -49,6 +49,9 @@ export async function PATCH(
     contactoEmergenciaTelefono?: string | null;
     autorizacionRecibida?: boolean;
     seguroRecibido?: boolean;
+    celiaco?: boolean;
+    intoleranteLactosa?: boolean;
+    vegetariano?: boolean;
     desayuno?: boolean;
     almuerzo?: boolean;
     cena?: boolean;
@@ -76,6 +79,11 @@ export async function PATCH(
   if (parsed.data.seguroRecibido !== undefined) {
     data.seguroRecibido = parsed.data.seguroRecibido;
   }
+  if (parsed.data.celiaco !== undefined) data.celiaco = parsed.data.celiaco;
+  if (parsed.data.intoleranteLactosa !== undefined) {
+    data.intoleranteLactosa = parsed.data.intoleranteLactosa;
+  }
+  if (parsed.data.vegetariano !== undefined) data.vegetariano = parsed.data.vegetariano;
   if (parsed.data.desayuno !== undefined) data.desayuno = parsed.data.desayuno;
   if (parsed.data.almuerzo !== undefined) data.almuerzo = parsed.data.almuerzo;
   if (parsed.data.cena !== undefined) data.cena = parsed.data.cena;

@@ -321,6 +321,13 @@ model Participante {
   autorizacionRecibida       Boolean   @default(false)
   seguroRecibido             Boolean   @default(false)
 
+  // Categorías dietéticas más comunes, aparte del texto libre de arriba:
+  // así el informe de comedor puede sacar un resumen exacto ("celiaco = 4"...)
+  // sin tener que adivinarlo del texto de "alergias".
+  celiaco             Boolean @default(false)
+  intoleranteLactosa  Boolean @default(false)
+  vegetariano         Boolean @default(false)
+
   // Solo informativo, para que la residencia sepa cuántos desayunos/
   // comidas/cenas preparar: no cambia el cálculo del presupuesto (que sigue
   // yendo por pensión completa/media pensión del grupo).
