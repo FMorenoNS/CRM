@@ -235,37 +235,85 @@ function plantaDe(nombre: string): number {
   return Number.isFinite(n) ? Math.floor(n / 100) : 0;
 }
 
-function agruparPorPlanta(
-  habitaciones: HabitacionDia[]
-): { planta: number; habitaciones: HabitacionDia[] }[] {
-  const mapa = new Map<number, HabitacionDia[]>();
-  for (const h of habitaciones) {
-    const planta = plantaDe(h.nombre);
-    const grupo = mapa.get(planta);
-    if (grupo) grupo.push(h);
-    else mapa.set(planta, [h]);
-  }
-  return [...mapa.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([planta, hs]) => ({
-      planta,
-      habitaciones: [...hs].sort((a, b) =>
-        a.nombre.localeCompare(b.nombre, undefined, { numeric: true })
-      ),
-    }));
+function rango(desde: number, hasta: number): string[] {
+  const paso = desde <= hasta ? 1 : -1;
+  const out: string[] = [];
+  for (let n = desde; paso > 0 ? n <= hasta : n >= hasta; n += paso) out.push(String(n));
+  return out;
 }
 
-// Caja de una habitación en el esquema: no calca el plano real del
-// edificio, es una rejilla ordenada por número con el mismo código de color
-// que ya usa el calendario (verde/ámbar/rojo según ocupación). Las
-// bloqueadas se ven en gris, sin números: no se pueden ocupar, pero se
-// muestran igual para que la planta se vea completa.
-function CajaHabitacion({ habitacion }: { habitacion: HabitacionDia }) {
-  if (!habitacion.activa) {
+// Orden real de las habitaciones a los dos lados del pasillo de cada
+// planta, de arriba abajo, tal como está en los planos de la residencia
+// (un único pasillo por planta, partido en dos mitades en el plano de
+// papel). Incluye números que no existen como habitación en el CRM (p. ej.
+// 207-209 y 222 en la 2ª planta: están cerradas, sin llave maestra) para
+// que la planta se vea completa igualmente.
+const PLANTA_LAYOUT: Record<number, { izquierda: string[]; derecha: string[] }> = {
+  1: { derecha: rango(101, 120), izquierda: rango(147, 121) },
+  2: { derecha: rango(201, 220), izquierda: rango(244, 221) },
+  3: { derecha: rango(301, 320), izquierda: rango(344, 321) },
+};
+
+// Una habitación real (con datos de ocupación) o un hueco del plano que no
+// existe como fila en el CRM (cerrada, sin llave maestra): se dibuja igual,
+// en gris, para no dejar un vacío raro en la planta.
+type CajaData = HabitacionDia | { nombre: string; inexistente: true };
+
+function esInexistente(h: CajaData): h is { nombre: string; inexistente: true } {
+  return "inexistente" in h;
+}
+
+function agruparPorPlanta(habitaciones: HabitacionDia[]): {
+  planta: number;
+  izquierda: CajaData[];
+  derecha: CajaData[];
+  sobrantes: HabitacionDia[];
+}[] {
+  const porNombre = new Map(habitaciones.map((h) => [h.nombre, h]));
+  const usados = new Set<string>();
+  const resolver = (nombres: string[]): CajaData[] =>
+    nombres.map((nombre) => {
+      usados.add(nombre);
+      return porNombre.get(nombre) ?? { nombre, inexistente: true as const };
+    });
+
+  const plantas = Object.entries(PLANTA_LAYOUT)
+    .map(([planta, { izquierda, derecha }]) => ({
+      planta: Number(planta),
+      izquierda: resolver(izquierda),
+      derecha: resolver(derecha),
+      sobrantes: [] as HabitacionDia[],
+    }))
+    .sort((a, b) => a.planta - b.planta);
+
+  // Por si algún día hay una habitación cuyo número no está en el esquema
+  // de arriba (una ampliación, una planta nueva...): no desaparece, se
+  // añade suelta al final de su planta en vez de perderse.
+  for (const h of habitaciones) {
+    if (usados.has(h.nombre)) continue;
+    const planta = plantaDe(h.nombre);
+    let grupo = plantas.find((p) => p.planta === planta);
+    if (!grupo) {
+      grupo = { planta, izquierda: [], derecha: [], sobrantes: [] };
+      plantas.push(grupo);
+      plantas.sort((a, b) => a.planta - b.planta);
+    }
+    grupo.sobrantes.push(h);
+  }
+
+  return plantas;
+}
+
+// Caja de una habitación en el plano: gris con "No disponible" cuando está
+// bloqueada o cuando el número ni siquiera existe como habitación en el
+// CRM (cerrada, sin llave maestra); el resto lleva el mismo código de
+// color que ya usa el calendario (verde/ámbar/rojo según ocupación).
+function CajaHabitacion({ habitacion }: { habitacion: CajaData }) {
+  if (esInexistente(habitacion) || !habitacion.activa) {
     return (
       <div
         title="No disponible"
-        className="flex flex-col items-center justify-center gap-0.5 rounded border border-dashed border-gray-300 bg-gray-100 px-1 py-2 text-center text-gray-400"
+        className="flex flex-col items-center justify-center gap-0.5 rounded border border-dashed border-gray-300 bg-gray-100 px-1 py-1.5 text-center text-gray-400"
       >
         <p className="text-xs font-semibold">{habitacion.nombre}</p>
         <p className="text-[11px] leading-tight">No disponible</p>
@@ -279,7 +327,7 @@ function CajaHabitacion({ habitacion }: { habitacion: HabitacionDia }) {
   return (
     <div
       title={nombres || "Libre"}
-      className={`flex flex-col items-center justify-center gap-0.5 rounded border border-black/5 px-1 py-2 text-center ${tonoOcupacion(
+      className={`flex flex-col items-center justify-center gap-0.5 rounded border border-black/5 px-1 py-1.5 text-center ${tonoOcupacion(
         ocupados,
         habitacion.capacidad
       )}`}
@@ -293,19 +341,63 @@ function CajaHabitacion({ habitacion }: { habitacion: HabitacionDia }) {
   );
 }
 
+// Plano de una planta: dos columnas (los dos lados del pasillo real, de
+// arriba abajo) con un hueco en medio a modo de pasillo. No están a la
+// misma altura porque cada lado tiene su propio número de habitaciones,
+// igual que en el edificio de verdad.
+function PlanoPlanta({
+  izquierda,
+  derecha,
+  sobrantes,
+}: {
+  izquierda: CajaData[];
+  derecha: CajaData[];
+  sobrantes: HabitacionDia[];
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex gap-3">
+        <div className="flex flex-1 flex-col gap-1">
+          {izquierda.map((h) => (
+            <CajaHabitacion key={h.nombre} habitacion={h} />
+          ))}
+        </div>
+        <div className="w-4 shrink-0 rounded bg-gray-50" title="Pasillo" />
+        <div className="flex flex-1 flex-col gap-1">
+          {derecha.map((h) => (
+            <CajaHabitacion key={h.nombre} habitacion={h} />
+          ))}
+        </div>
+      </div>
+      {sobrantes.length > 0 && (
+        <div className="mt-1 grid grid-cols-5 gap-1.5 border-t border-dashed border-gray-200 pt-2 sm:grid-cols-7">
+          {sobrantes.map((h) => (
+            <CajaHabitacion key={h.id} habitacion={h} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function VistaPlano({ habitaciones }: { habitaciones: HabitacionDia[] }) {
   const plantas = agruparPorPlanta(habitaciones);
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       {plantas.map((p) => (
         <div key={p.planta}>
           <h3 className="text-sm font-medium text-gray-700">
-            Planta {p.planta} <span className="font-normal text-gray-400">({p.habitaciones.length})</span>
+            Planta {p.planta}{" "}
+            <span className="font-normal text-gray-400">
+              ({p.izquierda.length + p.derecha.length + p.sobrantes.length})
+            </span>
           </h3>
-          <div className="mt-2 grid grid-cols-5 gap-1.5 sm:grid-cols-7">
-            {p.habitaciones.map((h) => (
-              <CajaHabitacion key={h.id} habitacion={h} />
-            ))}
+          <div className="mt-2">
+            <PlanoPlanta
+              izquierda={p.izquierda}
+              derecha={p.derecha}
+              sobrantes={p.sobrantes}
+            />
           </div>
         </div>
       ))}
