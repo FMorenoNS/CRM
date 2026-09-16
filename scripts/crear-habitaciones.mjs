@@ -62,7 +62,9 @@ const HABITACIONES = [
   { nombre: "134", capacidad: 5, activa: true }, // 1 cama y 2 literas
   { nombre: "135", capacidad: 3, activa: true }, // 1 cama y 1 litera
   { nombre: "136", capacidad: 2, activa: true }, // 1 litera
-  // 137-147: bloqueadas, igual que 101-107 (capacidad todavía desconocida).
+  // 137-144: bloqueadas, igual que 101-107 (capacidad todavía desconocida).
+  // El plano real de la 1ª planta no llega más allá de la 144: la 145-147
+  // no existen en el edificio, se quitaron al comprobarlo contra el plano.
   { nombre: "137", capacidad: 0, activa: false },
   { nombre: "138", capacidad: 0, activa: false },
   { nombre: "139", capacidad: 0, activa: false },
@@ -71,9 +73,6 @@ const HABITACIONES = [
   { nombre: "142", capacidad: 0, activa: false },
   { nombre: "143", capacidad: 0, activa: false },
   { nombre: "144", capacidad: 0, activa: false },
-  { nombre: "145", capacidad: 0, activa: false },
-  { nombre: "146", capacidad: 0, activa: false },
-  { nombre: "147", capacidad: 0, activa: false },
   // 2ª planta: 3 camas y 1 litera, ocupación 5.
   { nombre: "201", capacidad: 5, activa: true },
   { nombre: "202", capacidad: 5, activa: true },
@@ -108,7 +107,7 @@ const HABITACIONES = [
   { nombre: "241", capacidad: 5, activa: true }, // 2 camas y 1 litera
   { nombre: "242", capacidad: 5, activa: true }, // 2 camas y 1 litera
   { nombre: "243", capacidad: 5, activa: true }, // 2 camas y 1 litera
-  { nombre: "205", capacidad: 3, activa: true }, // 1 cama y 1 litera
+  { nombre: "205", capacidad: 3, activa: true, nevera: true }, // 1 cama y 1 litera
   { nombre: "213", capacidad: 2, activa: true }, // 2 camas
   { nombre: "221", capacidad: 6, activa: true }, // 6 camas (apartamento)
   { nombre: "225", capacidad: 5, activa: true }, // 3 camas y 1 litera (cortina ducha)

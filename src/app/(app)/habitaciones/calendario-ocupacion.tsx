@@ -249,7 +249,7 @@ function rango(desde: number, hasta: number): string[] {
 // 207-209 y 222 en la 2ª planta: están cerradas, sin llave maestra) para
 // que la planta se vea completa igualmente.
 const PLANTA_LAYOUT: Record<number, { izquierda: string[]; derecha: string[] }> = {
-  1: { derecha: rango(101, 120), izquierda: rango(147, 121) },
+  1: { derecha: rango(101, 120), izquierda: rango(144, 121) },
   2: { derecha: rango(201, 220), izquierda: rango(244, 221) },
   3: { derecha: rango(301, 320), izquierda: rango(344, 321) },
 };
