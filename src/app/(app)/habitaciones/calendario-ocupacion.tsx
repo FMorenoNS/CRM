@@ -242,27 +242,36 @@ function rango(desde: number, hasta: number): string[] {
   return out;
 }
 
-// Orden real de las habitaciones a los dos lados del pasillo de cada
-// planta, de arriba abajo, tal como está en los planos de la residencia
-// (un único pasillo por planta, partido en dos mitades en el plano de
-// papel). Incluye números que no existen como habitación en el CRM (p. ej.
-// 207-209 y 222 en la 2ª planta: están cerradas, sin llave maestra) para
-// que la planta se vea completa igualmente.
-const PLANTA_LAYOUT: Record<number, { izquierda: string[]; derecha: string[] }> = {
-  1: { derecha: rango(101, 120), izquierda: rango(144, 121) },
-  2: { derecha: rango(201, 220), izquierda: rango(244, 221) },
-  3: { derecha: rango(301, 320), izquierda: rango(344, 321) },
+// Orden real de las habitaciones a un lado del pasillo, de arriba abajo,
+// tal como está en el plano de la residencia:
+//  - orden: la secuencia de números, incluidos los que no existen como
+//    habitación en el CRM (p. ej. 207-209 y 222 en la 2ª planta: están
+//    cerradas, sin llave maestra) para que la planta se vea completa.
+//  - saltoTrasNumero: justo después de esta habitación el pasillo da un
+//    salto hacia la derecha en el plano (marcado ahí con una línea de
+//    puntos).
+//  - escaleraTrasNumeros: huecos de la escalera de incendios, justo
+//    después de estas habitaciones.
+type LadoLayout = {
+  orden: string[];
+  saltoTrasNumero: string;
+  escaleraTrasNumeros?: string[];
 };
 
-// En el plano real el pasillo no baja en línea recta: a partir de aquí (en
-// cada lado) da un salto hacia la derecha. Se refleja con un margen al
-// dibujar, sin llegar a la distancia exagerada del plano de papel.
-const CORTE_IZQUIERDA = 15; // 144→130 antes del salto, 129→121 después
-const CORTE_DERECHA = 12; // 101→112 antes del salto, 113→120 después
-
-function dividirEnTramo<T>(items: T[], corte: number): [T[], T[]] {
-  return [items.slice(0, corte), items.slice(corte)];
-}
+const PLANTA_LAYOUT: Record<number, { izquierda: LadoLayout; derecha: LadoLayout }> = {
+  1: {
+    derecha: { orden: rango(101, 120), saltoTrasNumero: "112", escaleraTrasNumeros: ["104", "118"] },
+    izquierda: { orden: rango(144, 121), saltoTrasNumero: "131" },
+  },
+  2: {
+    derecha: { orden: rango(201, 220), saltoTrasNumero: "212", escaleraTrasNumeros: ["204", "218"] },
+    izquierda: { orden: rango(244, 221), saltoTrasNumero: "231" },
+  },
+  3: {
+    derecha: { orden: rango(301, 320), saltoTrasNumero: "312", escaleraTrasNumeros: ["304", "318"] },
+    izquierda: { orden: rango(344, 321), saltoTrasNumero: "331" },
+  },
+};
 
 // Una habitación real (con datos de ocupación) o un hueco del plano que no
 // existe como fila en el CRM (cerrada, sin llave maestra): se dibuja igual,
@@ -277,6 +286,7 @@ function agruparPorPlanta(habitaciones: HabitacionDia[]): {
   planta: number;
   izquierda: CajaData[];
   derecha: CajaData[];
+  layout: { izquierda: LadoLayout; derecha: LadoLayout };
   sobrantes: HabitacionDia[];
 }[] {
   const porNombre = new Map(habitaciones.map((h) => [h.nombre, h]));
@@ -288,10 +298,11 @@ function agruparPorPlanta(habitaciones: HabitacionDia[]): {
     });
 
   const plantas = Object.entries(PLANTA_LAYOUT)
-    .map(([planta, { izquierda, derecha }]) => ({
+    .map(([planta, layout]) => ({
       planta: Number(planta),
-      izquierda: resolver(izquierda),
-      derecha: resolver(derecha),
+      izquierda: resolver(layout.izquierda.orden),
+      derecha: resolver(layout.derecha.orden),
+      layout,
       sobrantes: [] as HabitacionDia[],
     }))
     .sort((a, b) => a.planta - b.planta);
@@ -304,7 +315,13 @@ function agruparPorPlanta(habitaciones: HabitacionDia[]): {
     const planta = plantaDe(h.nombre);
     let grupo = plantas.find((p) => p.planta === planta);
     if (!grupo) {
-      grupo = { planta, izquierda: [], derecha: [], sobrantes: [] };
+      grupo = {
+        planta,
+        izquierda: [],
+        derecha: [],
+        layout: { izquierda: { orden: [], saltoTrasNumero: "" }, derecha: { orden: [], saltoTrasNumero: "" } },
+        sobrantes: [],
+      };
       plantas.push(grupo);
       plantas.sort((a, b) => a.planta - b.planta);
     }
@@ -351,46 +368,97 @@ function CajaHabitacion({ habitacion }: { habitacion: CajaData }) {
   );
 }
 
+// Hueco de la escalera de incendios: no es una habitación, se dibuja en el
+// sitio del plano donde de verdad hay una, entre dos habitaciones.
+function EscaleraIncendios() {
+  return (
+    <div
+      title="Escalera de incendios"
+      className="rounded border border-dashed border-gray-300 bg-gray-100 px-1 py-1 text-center text-[9px] font-medium uppercase leading-tight tracking-wide text-gray-400"
+    >
+      Escalera
+    </div>
+  );
+}
+
+// Una columna de habitaciones con, si le tocan, los huecos de la escalera
+// de incendios intercalados justo después de la habitación que corresponda.
+function ColumnaHabitaciones({
+  habitaciones,
+  escaleraTrasNumeros,
+}: {
+  habitaciones: CajaData[];
+  escaleraTrasNumeros?: string[];
+}) {
+  return (
+    <>
+      {habitaciones.flatMap((h) => {
+        const nodos = [<CajaHabitacion key={h.nombre} habitacion={h} />];
+        if (escaleraTrasNumeros?.includes(h.nombre)) {
+          nodos.push(<EscaleraIncendios key={`escalera-${h.nombre}`} />);
+        }
+        return nodos;
+      })}
+    </>
+  );
+}
+
 // Plano de una planta: dos columnas (los dos lados del pasillo real, de
 // arriba abajo) con un hueco en medio a modo de pasillo. No están a la
 // misma altura porque cada lado tiene su propio número de habitaciones,
-// igual que en el edificio de verdad.
+// igual que en el edificio de verdad. Justo después de la habitación
+// marcada como "saltoTrasNumero" el pasillo real da un salto hacia la
+// derecha: se refleja con un margen (sin llegar a la distancia exagerada
+// del plano de papel) y una línea de puntos, igual que en el plano.
 function PlanoPlanta({
   izquierda,
   derecha,
+  layout,
   sobrantes,
 }: {
   izquierda: CajaData[];
   derecha: CajaData[];
+  layout: { izquierda: LadoLayout; derecha: LadoLayout };
   sobrantes: HabitacionDia[];
 }) {
-  const [izqArriba, izqAbajo] = dividirEnTramo(izquierda, CORTE_IZQUIERDA);
-  const [derArriba, derAbajo] = dividirEnTramo(derecha, CORTE_DERECHA);
+  const cortarTras = (orden: string[], numero: string) => {
+    const i = orden.indexOf(numero);
+    return i === -1 ? orden.length : i + 1;
+  };
+  const corteIzq = cortarTras(layout.izquierda.orden, layout.izquierda.saltoTrasNumero);
+  const corteDer = cortarTras(layout.derecha.orden, layout.derecha.saltoTrasNumero);
+  const [izqArriba, izqAbajo] = [izquierda.slice(0, corteIzq), izquierda.slice(corteIzq)];
+  const [derArriba, derAbajo] = [derecha.slice(0, corteDer), derecha.slice(corteDer)];
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex gap-3">
         <div className="flex flex-1 flex-col gap-1">
-          {izqArriba.map((h) => (
-            <CajaHabitacion key={h.nombre} habitacion={h} />
-          ))}
+          <ColumnaHabitaciones
+            habitaciones={izqArriba}
+            escaleraTrasNumeros={layout.izquierda.escaleraTrasNumeros}
+          />
           {izqAbajo.length > 0 && (
-            <div className="ml-4 flex flex-col gap-1">
-              {izqAbajo.map((h) => (
-                <CajaHabitacion key={h.nombre} habitacion={h} />
-              ))}
+            <div className="ml-4 flex flex-col gap-1 border-t-2 border-dashed border-gray-300 pt-1">
+              <ColumnaHabitaciones
+                habitaciones={izqAbajo}
+                escaleraTrasNumeros={layout.izquierda.escaleraTrasNumeros}
+              />
             </div>
           )}
         </div>
         <div className="w-4 shrink-0 rounded bg-gray-50" title="Pasillo" />
         <div className="flex flex-1 flex-col gap-1">
-          {derArriba.map((h) => (
-            <CajaHabitacion key={h.nombre} habitacion={h} />
-          ))}
+          <ColumnaHabitaciones
+            habitaciones={derArriba}
+            escaleraTrasNumeros={layout.derecha.escaleraTrasNumeros}
+          />
           {derAbajo.length > 0 && (
-            <div className="ml-4 flex flex-col gap-1">
-              {derAbajo.map((h) => (
-                <CajaHabitacion key={h.nombre} habitacion={h} />
-              ))}
+            <div className="ml-4 flex flex-col gap-1 border-t-2 border-dashed border-gray-300 pt-1">
+              <ColumnaHabitaciones
+                habitaciones={derAbajo}
+                escaleraTrasNumeros={layout.derecha.escaleraTrasNumeros}
+              />
             </div>
           )}
         </div>
@@ -435,6 +503,7 @@ function VistaPlano({ habitaciones }: { habitaciones: HabitacionDia[] }) {
             <PlanoPlanta
               izquierda={p.izquierda}
               derecha={p.derecha}
+              layout={p.layout}
               sobrantes={p.sobrantes}
             />
           </div>
