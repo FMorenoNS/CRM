@@ -37,6 +37,7 @@ type DefaultValues = {
   duracionManual?: boolean;
   diasManual?: number | null;
   nochesManual?: number | null;
+  fechaPago?: string | null;
   notas?: string | null;
 };
 
@@ -65,6 +66,7 @@ function readValues(form: HTMLFormElement) {
     duracionManual: duracionModo !== "",
     diasManual: (data.get("diasManual") as string) ?? "",
     nochesManual: (data.get("nochesManual") as string) ?? "",
+    fechaPago: (data.get("fechaPago") as string) ?? "",
     notas: (data.get("notas") as string) ?? "",
   };
 }
@@ -526,6 +528,27 @@ export function EstanciaForm({
           />
           <p className="text-xs text-gray-500">
             Se podrá calcular con las tarifas en cuanto la estancia esté creada.
+          </p>
+        </div>
+      )}
+
+      {mode === "edit" && (
+        <div className="flex flex-col gap-1">
+          <label htmlFor="fechaPago" className="text-sm font-medium text-gray-700">
+            Fecha de pago
+          </label>
+          <input
+            id="fechaPago"
+            name="fechaPago"
+            type="date"
+            disabled={readOnly}
+            defaultValue={defaultValues?.fechaPago ?? ""}
+            className={`${inputCls} max-w-[12rem]`}
+          />
+          <p className="text-xs text-gray-500">
+            Cuándo se cobró de verdad este presupuesto (no se calcula sola:
+            se pone a mano). Se usa en Informes para el año fiscal
+            (julio-junio).
           </p>
         </div>
       )}

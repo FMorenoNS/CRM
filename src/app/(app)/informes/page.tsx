@@ -8,6 +8,7 @@ import { BarraHorizontal } from "./barra-horizontal";
 import { ColumnasMensuales } from "./columnas-mensuales";
 import { GraficoQuesitos } from "./grafico-quesitos";
 import { CANAL_OPTIONS } from "@/lib/labels";
+import { periodoFiscalPorEtiqueta, periodosDisponibles } from "@/lib/periodo-fiscal";
 
 // Ganadas/perdidas es un resultado (bien/mal), no una categoría más: colores
 // de estado, no de paleta categórica. Canal de origen sí es identidad pura
@@ -68,12 +69,16 @@ function formatEuros(valor: number) {
   });
 }
 
-export default async function InformesPage() {
+export default async function InformesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ periodo?: string }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/login");
   const visibilidad = centroVisibilityFilter(session);
 
-  const [centrosCount, usuariosCount, estancias, centrosPorCanal] = await Promise.all([
+  const [centrosCount, usuariosCount, estanciasTodas, centrosPorCanal] = await Promise.all([
     prisma.centro.count({ where: visibilidad }),
     prisma.user.count(),
     prisma.estancia.findMany({
@@ -82,11 +87,46 @@ export default async function InformesPage() {
         estado: true,
         presupuestoImporte: true,
         fechaInicio: true,
+        fechaPago: true,
         centro: { select: { pais: true } },
       },
     }),
     prisma.centro.findMany({ where: visibilidad, select: { canalOrigen: true } }),
   ]);
+
+  const { periodo: periodoParam } = await searchParams;
+  const periodoActivo = periodoParam ? periodoFiscalPorEtiqueta(periodoParam) : null;
+  const periodos = periodosDisponibles(
+    estanciasTodas.map((e) => e.fechaInicio).filter((f): f is Date => f !== null)
+  );
+
+  // Con un año fiscal (julio-junio) elegido, todos los informes de abajo se
+  // recalculan solo con las estancias cuyo viaje cae en ese periodo (por
+  // fecha de inicio); sin elegir ninguno, es el histórico completo, como
+  // hasta ahora. "Clientes captados" y "Canal de origen" quedan aparte: son
+  // del cliente, no de una estancia concreta, así que no tiene un periodo
+  // claro al que asignarlos.
+  const estancias = periodoActivo
+    ? estanciasTodas.filter(
+        (e) =>
+          e.fechaInicio && e.fechaInicio >= periodoActivo.inicio && e.fechaInicio <= periodoActivo.fin
+      )
+    : estanciasTodas;
+
+  // De lo que se ha cobrado dentro de este periodo (estancias contratadas
+  // cuyo viaje cae aquí), cuánto se pagó de verdad antes de que empezara:
+  // un colegio que paga en junio pero viene en septiembre. Se muestra
+  // aparte, no se resta de "Ingresos generados".
+  const pagadoPeriodoAnterior = periodoActivo
+    ? estancias
+        .filter(
+          (e) =>
+            (ESTADOS_CONTRATADOS as readonly string[]).includes(e.estado) &&
+            e.fechaPago &&
+            e.fechaPago < periodoActivo.inicio
+        )
+        .reduce((total, e) => total + (e.presupuestoImporte ? Number(e.presupuestoImporte) : 0), 0)
+    : null;
 
   const ingresosGenerados = estancias
     .filter((e) => (ESTADOS_CONTRATADOS as readonly string[]).includes(e.estado))
@@ -136,19 +176,28 @@ export default async function InformesPage() {
     valor: centrosPorCanal.filter((c) => c.canalOrigen === canal).length,
   }));
 
-  // Tendencia de captación: estancias cuyo viaje cae en cada uno de los
-  // últimos 12 meses (mes en curso incluido), por fecha de inicio de la
-  // estancia (no por cuándo se dio de alta en el CRM). Ventana fija, no solo
-  // los meses con datos: un mes sin nada también es información (una caída
-  // se vería). Las estancias sin fecha de inicio todavía no cuentan en
-  // ningún mes.
-  const ahora = new Date();
-  const meses = Array.from({ length: 12 }, (_, i) => {
-    const offset = 11 - i;
-    const inicio = new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth() - offset, 1));
-    const fin = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth() + 1, 0, 23, 59, 59));
-    return { inicio, fin };
-  });
+  // Tendencia de captación: estancias cuyo viaje cae en cada uno de los 12
+  // meses de la ventana, por fecha de inicio de la estancia (no por cuándo
+  // se dio de alta en el CRM). Ventana fija, no solo los meses con datos: un
+  // mes sin nada también es información (una caída se vería). Las
+  // estancias sin fecha de inicio todavía no cuentan en ningún mes. Con un
+  // año fiscal elegido, la ventana es julio-junio de ese año; si no,
+  // los últimos 12 meses desde hoy (mes en curso incluido), como antes.
+  const meses = periodoActivo
+    ? Array.from({ length: 12 }, (_, i) => {
+        const inicio = new Date(
+          Date.UTC(periodoActivo.inicio.getUTCFullYear(), periodoActivo.inicio.getUTCMonth() + i, 1)
+        );
+        const fin = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth() + 1, 0, 23, 59, 59));
+        return { inicio, fin };
+      })
+    : Array.from({ length: 12 }, (_, i) => {
+        const ahora = new Date();
+        const offset = 11 - i;
+        const inicio = new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth() - offset, 1));
+        const fin = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth() + 1, 0, 23, 59, 59));
+        return { inicio, fin };
+      });
   const porMes = meses.map(({ inicio, fin }) => ({
     etiqueta: inicio.toLocaleDateString("es-ES", { month: "short", year: "2-digit", timeZone: "UTC" }),
     valor: estancias.filter((e) => e.fechaInicio && e.fechaInicio >= inicio && e.fechaInicio <= fin)
@@ -172,13 +221,48 @@ export default async function InformesPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Informes</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          La vista de conjunto: ingresos, captación y conversión. Para el
-          día a día (qué hacer hoy) mejor el Panel.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Informes</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            La vista de conjunto: ingresos, captación y conversión. Para el
+            día a día (qué hacer hoy) mejor el Panel.
+          </p>
+        </div>
+        <form className="flex items-center gap-2 text-sm">
+          <label htmlFor="periodo" className="text-gray-600">
+            Año fiscal
+          </label>
+          <select
+            id="periodo"
+            name="periodo"
+            defaultValue={periodoParam ?? ""}
+            className="rounded border border-gray-300 px-2 py-1"
+          >
+            <option value="">Todo el histórico</option>
+            {periodos.map((p) => (
+              <option key={p.etiqueta} value={p.etiqueta}>
+                {p.etiqueta} (jul-jun)
+              </option>
+            ))}
+          </select>
+          <button
+            type="submit"
+            className="rounded border border-gray-300 px-3 py-1 text-gray-700 hover:bg-gray-100"
+          >
+            Aplicar
+          </button>
+        </form>
       </div>
+
+      {periodoActivo && pagadoPeriodoAnterior !== null && pagadoPeriodoAnterior > 0 && (
+        <div className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <b>{formatEuros(pagadoPeriodoAnterior)}</b> de este año fiscal ya se
+          habían pagado en el periodo anterior (antes del 1 de julio de{" "}
+          {periodoActivo.inicio.getUTCFullYear()}). Va incluido en
+          &ldquo;Ingresos generados&rdquo;, no se resta.
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
         <StatCard

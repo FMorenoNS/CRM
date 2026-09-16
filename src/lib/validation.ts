@@ -122,6 +122,9 @@ const estanciaBaseSchema = z.object({
   fechaFin: fechaOpcional,
   estado: z.enum(ESTADOS).optional(),
   presupuestoImporte: numeroOpcional,
+  // Cuándo se cobró de verdad el presupuesto: se pone a mano, sirve para
+  // Informes (año fiscal julio-junio).
+  fechaPago: fechaOpcional,
   // Días que dura la reserva provisional de plaza una vez enviado el
   // presupuesto (el momento de envío lo pone el sistema, no este campo).
   reservaDias: z

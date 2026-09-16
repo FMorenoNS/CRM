@@ -250,6 +250,7 @@ export async function buildEstanciaBloques({
               duracionManual: estancia.duracionManual,
               diasManual: estancia.diasManual,
               nochesManual: estancia.nochesManual,
+              fechaPago: toDateInput(estancia.fechaPago),
               notas: estancia.notas,
             }}
             presupuesto={presupuesto}

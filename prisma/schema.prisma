@@ -234,6 +234,11 @@ model Estancia {
   estado             EstadoEstancia   @default(INTERESADO)
   activo             Boolean          @default(true)
   presupuestoImporte Decimal?         @db.Decimal(10, 2)
+  // Cuándo se cobró de verdad este presupuesto. Se pone a mano (no hay
+  // forma de deducirlo de nada que ya se guarde): en Informes sirve para
+  // saber si el ingreso se cobró en el año fiscal de la estancia (1 de
+  // julio a 30 de junio) o en el anterior.
+  fechaPago          DateTime?
   notas              String?
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt

@@ -86,6 +86,7 @@ async function handlerPATCH(
       edadGrupo: d.edadGrupo || null,
       fechaInicio: d.fechaInicio ? new Date(d.fechaInicio) : null,
       fechaFin: d.fechaFin ? new Date(d.fechaFin) : null,
+      fechaPago: d.fechaPago ? new Date(d.fechaPago) : null,
       estado: d.estado ?? undefined,
       presupuestoImporte:
         d.presupuestoImporte !== undefined &&
